@@ -1,0 +1,227 @@
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { PageHeader } from "@/components/PageHeader";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
+import { ChevronLeft, ChevronRight, Check, MessageCircle } from "lucide-react";
+
+const Financeiro = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
+  const [appts, setAppts] = useState<any[]>([]);
+  const [payDialog, setPayDialog] = useState<any>(null);
+  const [payForm, setPayForm] = useState({ amount: 0, paid_at: new Date().toISOString().slice(0,10), method: "pix" });
+
+  const range = useMemo(() => {
+    const start = new Date(month);
+    const end = new Date(month); end.setMonth(end.getMonth() + 1);
+    return { start, end };
+  }, [month]);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from("appointments")
+      .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, method)")
+      .gte("starts_at", range.start.toISOString())
+      .lt("starts_at", range.end.toISOString())
+      .order("starts_at", { ascending: false });
+    setAppts(data ?? []);
+  };
+  useEffect(() => { void load(); }, [month]);
+
+  const realized = appts.filter((a) => a.status === "done");
+  const totalDone = realized.reduce((s, a) => s + Number(a.price || 0), 0);
+  const totalReceived = realized.reduce((s, a) => s + (a.payment?.[0] ? Number(a.payment[0].amount) : 0), 0);
+  const totalPending = Math.max(0, totalDone - totalReceived);
+  const ticket = realized.length ? totalDone / realized.length : 0;
+
+  // by patient summary
+  const byPatient = useMemo(() => {
+    const map = new Map<string, { name: string; phone: string | null; sessions: number; total: number; paid: number }>();
+    realized.forEach((a) => {
+      const k = a.patient?.id;
+      if (!k) return;
+      const cur = map.get(k) ?? { name: a.patient.full_name, phone: a.patient.phone, sessions: 0, total: 0, paid: 0 };
+      cur.sessions += 1;
+      cur.total += Number(a.price || 0);
+      cur.paid += a.payment?.[0] ? Number(a.payment[0].amount) : 0;
+      map.set(k, cur);
+    });
+    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v, balance: v.total - v.paid }));
+  }, [realized]);
+
+  const openPay = (a: any) => {
+    setPayDialog(a);
+    setPayForm({ amount: Number(a.price), paid_at: new Date().toISOString().slice(0,10), method: "pix" });
+  };
+
+  const confirmPay = async () => {
+    if (!payDialog) return;
+    const { error } = await supabase.from("payments").insert({
+      appointment_id: payDialog.id,
+      amount: payForm.amount,
+      paid_at: payForm.paid_at,
+      method: payForm.method as any,
+      created_by: user?.id,
+    });
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Pagamento registrado" });
+    setPayDialog(null);
+    void load();
+  };
+
+  const removePay = async (paymentId: string) => {
+    if (!confirm("Remover este pagamento?")) return;
+    const { error } = await supabase.from("payments").delete().eq("id", paymentId);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    void load();
+  };
+
+  const moveMonth = (d: number) => {
+    const m = new Date(month); m.setMonth(m.getMonth() + d); setMonth(m);
+  };
+
+  return (
+    <>
+      <PageHeader title="Financeiro" description="Pagamentos das sessões realizadas" />
+
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+          <div className="text-sm font-medium ml-2 capitalize">
+            {month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <Stat label="Sessões realizadas" value={realized.length.toString()} />
+        <Stat label="Faturamento" value={formatBRL(totalDone)} />
+        <Stat label="Recebido" value={formatBRL(totalReceived)} tone="success" />
+        <Stat label="Pendente" value={formatBRL(totalPending)} tone="warning" />
+      </div>
+
+      <Tabs defaultValue="sessions">
+        <TabsList>
+          <TabsTrigger value="sessions">Sessões</TabsTrigger>
+          <TabsTrigger value="patients">Por paciente</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="sessions" className="mt-4">
+          <Card className="divide-y">
+            {realized.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Nenhuma sessão realizada no mês.</div>}
+            {realized.map((a) => {
+              const pay = a.payment?.[0];
+              return (
+                <div key={a.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{a.patient?.full_name}</div>
+                    <div className="text-xs text-muted-foreground">{formatDateBR(a.starts_at)}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
+                      {pay ? (
+                        <Badge className="bg-success/15 text-success border-0">Pago · {pay.method}</Badge>
+                      ) : (
+                        <Badge variant="outline">Pendente</Badge>
+                      )}
+                    </div>
+                    {pay ? (
+                      <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
+                    ) : (
+                      <>
+                        {a.patient?.phone && (
+                          <Button asChild variant="ghost" size="icon" title="Cobrar via WhatsApp">
+                            <a href={buildWaUrl(a.patient.phone, `Olá ${a.patient.full_name}, tudo bem? Passando para confirmar o pagamento da sessão de ${formatDateBR(a.starts_at)} no valor de ${formatBRL(Number(a.price))}. Obrigada!`)} target="_blank" rel="noopener noreferrer">
+                              <MessageCircle className="h-4 w-4 text-success" />
+                            </a>
+                          </Button>
+                        )}
+                        <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="patients" className="mt-4">
+          <Card className="divide-y">
+            {byPatient.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Sem dados no mês.</div>}
+            {byPatient.map((p) => (
+              <div key={p.id} className="p-4 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{p.name}</div>
+                  <div className="text-xs text-muted-foreground">{p.sessions} sessões · Total {formatBRL(p.total)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm">Pago: <span className="text-success">{formatBRL(p.paid)}</span></div>
+                  <div className="text-sm">Saldo: <span className={p.balance > 0 ? "text-warning" : ""}>{formatBRL(p.balance)}</span></div>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={!!payDialog} onOpenChange={(o) => !o && setPayDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Registrar pagamento</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">{payDialog?.patient?.full_name} · {payDialog && formatDateBR(payDialog.starts_at)}</div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Valor (R$)</Label>
+              <Input type="number" step="0.01" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: Number(e.target.value) })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data</Label>
+                <Input type="date" value={payForm.paid_at} onChange={(e) => setPayForm({ ...payForm, paid_at: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Forma</Label>
+                <Select value={payForm.method} onValueChange={(v) => setPayForm({ ...payForm, method: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pix">Pix</SelectItem>
+                    <SelectItem value="cash">Dinheiro</SelectItem>
+                    <SelectItem value="card">Cartão</SelectItem>
+                    <SelectItem value="transfer">Transferência</SelectItem>
+                    <SelectItem value="other">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayDialog(null)}>Cancelar</Button>
+            <Button onClick={confirmPay}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+const Stat = ({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" }) => (
+  <Card className="p-4">
+    <div className="text-xs text-muted-foreground">{label}</div>
+    <div className={`text-xl font-semibold ${tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : ""}`}>{value}</div>
+  </Card>
+);
+
+export default Financeiro;
