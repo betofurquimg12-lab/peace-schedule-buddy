@@ -113,6 +113,59 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     return (data ?? []).filter((a) => a.id !== appointment?.id);
   };
 
+  const syncCalendar = async (
+    action: "create" | "update" | "delete",
+    appointmentId: string,
+    args: {
+      starts_at?: string;
+      ends_at?: string;
+      patient_id?: string;
+      google_event_id?: string | null;
+      patient_name?: string;
+    },
+  ): Promise<{ event_id?: string; meet_link?: string | null } | null> => {
+    try {
+      // Fetch patient email + clinic email for attendees
+      let attendees: { email: string; displayName?: string }[] = [];
+      let patientName = args.patient_name ?? "Paciente";
+      if (args.patient_id) {
+        const { data: p } = await supabase
+          .from("patients")
+          .select("full_name, email")
+          .eq("id", args.patient_id)
+          .maybeSingle();
+        if (p?.email) attendees.push({ email: p.email, displayName: p.full_name });
+        if (p?.full_name) patientName = p.full_name;
+      }
+      if (user?.email) attendees.push({ email: user.email, displayName: "Psicóloga" });
+
+      const { data, error } = await supabase.functions.invoke("google-calendar-event", {
+        body: {
+          action,
+          appointment_id: appointmentId,
+          starts_at: args.starts_at,
+          ends_at: args.ends_at,
+          summary: `Sessão · ${patientName}`,
+          description: "Sessão de psicoterapia.",
+          attendees,
+          google_event_id: args.google_event_id ?? undefined,
+        },
+      });
+      if (error) {
+        console.error("calendar sync error", error);
+        toast({
+          title: "Aviso",
+          description: "Agendamento salvo, mas falha ao sincronizar com o Google Calendar.",
+        });
+        return null;
+      }
+      return data ?? null;
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
+
   const submit = async () => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
@@ -142,8 +195,32 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         recurrence: parsed.data.recurrence,
         notes: parsed.data.notes || null,
       }).eq("id", appointment.id);
+      if (error) {
+        setSaving(false);
+        return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      }
+
+      // Sync calendar (only for online or already-linked events)
+      if (parsed.data.modality === "online" || appointment.google_event_id) {
+        const result = await syncCalendar(
+          appointment.google_event_id ? "update" : "create",
+          appointment.id,
+          {
+            starts_at: start.toISOString(),
+            ends_at: end.toISOString(),
+            patient_id: parsed.data.patient_id,
+            google_event_id: appointment.google_event_id,
+          },
+        );
+        if (result?.event_id) {
+          await supabase.from("appointments").update({
+            google_event_id: result.event_id,
+            meet_link: result.meet_link ?? null,
+          }).eq("id", appointment.id);
+        }
+      }
+
       setSaving(false);
-      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
       toast({ title: "Agendamento atualizado" });
     } else {
       const groupId = parsed.data.recurrence !== "none" && parsed.data.occurrences > 1 ? crypto.randomUUID() : null;
@@ -167,9 +244,30 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           created_by: user?.id,
         });
       }
-      const { error } = await supabase.from("appointments").insert(rows);
+      const { data: inserted, error } = await supabase.from("appointments").insert(rows).select("id, starts_at, ends_at");
+      if (error) {
+        setSaving(false);
+        return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      }
+
+      // Sync each created appointment with Google Calendar (only if online)
+      if (parsed.data.modality === "online" && inserted) {
+        for (const row of inserted) {
+          const result = await syncCalendar("create", row.id, {
+            starts_at: row.starts_at,
+            ends_at: row.ends_at,
+            patient_id: parsed.data.patient_id,
+          });
+          if (result?.event_id) {
+            await supabase.from("appointments").update({
+              google_event_id: result.event_id,
+              meet_link: result.meet_link ?? null,
+            }).eq("id", row.id);
+          }
+        }
+      }
+
       setSaving(false);
-      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
       toast({ title: total > 1 ? `${total} agendamentos criados` : "Agendamento criado" });
     }
     onSaved();
@@ -179,6 +277,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const remove = async () => {
     if (!appointment) return;
     if (!confirm("Excluir este agendamento?")) return;
+    if (appointment.google_event_id) {
+      await syncCalendar("delete", appointment.id, {
+        google_event_id: appointment.google_event_id,
+      });
+    }
     const { error } = await supabase.from("appointments").delete().eq("id", appointment.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     toast({ title: "Excluído" });
