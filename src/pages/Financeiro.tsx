@@ -8,19 +8,31 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
-import { ChevronLeft, ChevronRight, Check, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 
 const Financeiro = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
   const [appts, setAppts] = useState<any[]>([]);
+  const [entries, setEntries] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any>(null);
   const [payForm, setPayForm] = useState({ amount: 0, paid_at: new Date().toISOString().slice(0,10), method: "pix" });
+
+  const [entryDialogOpen, setEntryDialogOpen] = useState(false);
+  const [entryForm, setEntryForm] = useState<any>({
+    type: "credit",
+    description: "",
+    amount: 0,
+    entry_date: new Date().toISOString().slice(0,10),
+    method: "pix",
+    notes: "",
+  });
 
   const range = useMemo(() => {
     const start = new Date(month);
@@ -29,13 +41,22 @@ const Financeiro = () => {
   }, [month]);
 
   const load = async () => {
-    const { data } = await supabase
-      .from("appointments")
-      .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, method)")
-      .gte("starts_at", range.start.toISOString())
-      .lt("starts_at", range.end.toISOString())
-      .order("starts_at", { ascending: false });
-    setAppts(data ?? []);
+    const [a, e] = await Promise.all([
+      supabase
+        .from("appointments")
+        .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, method)")
+        .gte("starts_at", range.start.toISOString())
+        .lt("starts_at", range.end.toISOString())
+        .order("starts_at", { ascending: false }),
+      supabase
+        .from("finance_entries")
+        .select("id, type, description, amount, entry_date, method, notes")
+        .gte("entry_date", range.start.toISOString().slice(0,10))
+        .lt("entry_date", range.end.toISOString().slice(0,10))
+        .order("entry_date", { ascending: false }),
+    ]);
+    setAppts(a.data ?? []);
+    setEntries(e.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
 
@@ -43,9 +64,11 @@ const Financeiro = () => {
   const totalDone = realized.reduce((s, a) => s + Number(a.price || 0), 0);
   const totalReceived = realized.reduce((s, a) => s + (a.payment?.[0] ? Number(a.payment[0].amount) : 0), 0);
   const totalPending = Math.max(0, totalDone - totalReceived);
-  const ticket = realized.length ? totalDone / realized.length : 0;
 
-  // by patient summary
+  const extraCredits = entries.filter((e) => e.type === "credit").reduce((s, e) => s + Number(e.amount), 0);
+  const extraDebits = entries.filter((e) => e.type === "debit").reduce((s, e) => s + Number(e.amount), 0);
+  const netResult = totalReceived + extraCredits - extraDebits;
+
   const byPatient = useMemo(() => {
     const map = new Map<string, { name: string; phone: string | null; sessions: number; total: number; paid: number }>();
     realized.forEach((a) => {
@@ -87,15 +110,56 @@ const Financeiro = () => {
     void load();
   };
 
+  const openNewEntry = (type: "credit" | "debit") => {
+    setEntryForm({
+      type,
+      description: "",
+      amount: 0,
+      entry_date: new Date().toISOString().slice(0,10),
+      method: "pix",
+      notes: "",
+    });
+    setEntryDialogOpen(true);
+  };
+
+  const submitEntry = async () => {
+    if (!entryForm.description.trim()) {
+      return toast({ title: "Descrição obrigatória", variant: "destructive" });
+    }
+    if (Number(entryForm.amount) <= 0) {
+      return toast({ title: "Informe um valor maior que zero", variant: "destructive" });
+    }
+    const { error } = await supabase.from("finance_entries").insert({
+      type: entryForm.type,
+      description: entryForm.description.trim(),
+      amount: Number(entryForm.amount),
+      entry_date: entryForm.entry_date,
+      method: entryForm.method,
+      notes: entryForm.notes?.trim() || null,
+      created_by: user?.id,
+    });
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Lançamento registrado" });
+    setEntryDialogOpen(false);
+    void load();
+  };
+
+  const removeEntry = async (id: string) => {
+    if (!confirm("Excluir este lançamento?")) return;
+    const { error } = await supabase.from("finance_entries").delete().eq("id", id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    void load();
+  };
+
   const moveMonth = (d: number) => {
     const m = new Date(month); m.setMonth(m.getMonth() + d); setMonth(m);
   };
 
   return (
     <>
-      <PageHeader title="Financeiro" description="Pagamentos das sessões realizadas" />
+      <PageHeader title="Financeiro" description="Pagamentos das sessões e lançamentos manuais" />
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
@@ -103,18 +167,34 @@ const Financeiro = () => {
             {month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
           </div>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => openNewEntry("credit")}>
+            <ArrowUpCircle className="h-4 w-4 text-success" /> Crédito
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openNewEntry("debit")}>
+            <ArrowDownCircle className="h-4 w-4 text-destructive" /> Débito
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Stat label="Sessões realizadas" value={realized.length.toString()} />
-        <Stat label="Faturamento" value={formatBRL(totalDone)} />
+        <Stat label="Faturamento sessões" value={formatBRL(totalDone)} />
         <Stat label="Recebido" value={formatBRL(totalReceived)} tone="success" />
         <Stat label="Pendente" value={formatBRL(totalPending)} tone="warning" />
+        <Stat label="Resultado líquido" value={formatBRL(netResult)} tone={netResult >= 0 ? "success" : "warning"} />
       </div>
+
+      {(extraCredits > 0 || extraDebits > 0) && (
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <Stat label="Outros créditos" value={formatBRL(extraCredits)} tone="success" />
+          <Stat label="Outros débitos" value={formatBRL(extraDebits)} tone="warning" />
+        </div>
+      )}
 
       <Tabs defaultValue="sessions">
         <TabsList>
           <TabsTrigger value="sessions">Sessões</TabsTrigger>
+          <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
         </TabsList>
 
@@ -159,6 +239,40 @@ const Financeiro = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="entries" className="mt-4">
+          <Card className="divide-y">
+            {entries.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground text-center">
+                Nenhum lançamento manual no mês. Use os botões "Crédito" ou "Débito" acima.
+              </div>
+            )}
+            {entries.map((e) => (
+              <div key={e.id} className="p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {e.type === "credit"
+                    ? <ArrowUpCircle className="h-5 w-5 text-success shrink-0" />
+                    : <ArrowDownCircle className="h-5 w-5 text-destructive shrink-0" />}
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{e.description}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatDateBR(e.entry_date)} · {e.method ?? "—"}
+                      {e.notes ? ` · ${e.notes}` : ""}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`text-sm font-semibold ${e.type === "credit" ? "text-success" : "text-destructive"}`}>
+                    {e.type === "credit" ? "+" : "−"} {formatBRL(Number(e.amount))}
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => removeEntry(e.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </TabsContent>
+
         <TabsContent value="patients" className="mt-4">
           <Card className="divide-y">
             {byPatient.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Sem dados no mês.</div>}
@@ -178,6 +292,7 @@ const Financeiro = () => {
         </TabsContent>
       </Tabs>
 
+      {/* Dialog: registrar pagamento */}
       <Dialog open={!!payDialog} onOpenChange={(o) => !o && setPayDialog(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Registrar pagamento</DialogTitle></DialogHeader>
@@ -210,6 +325,58 @@ const Financeiro = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayDialog(null)}>Cancelar</Button>
             <Button onClick={confirmPay}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: novo lançamento manual */}
+      <Dialog open={entryDialogOpen} onOpenChange={setEntryDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Novo {entryForm.type === "credit" ? "crédito" : "débito"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Descrição *</Label>
+              <Input
+                value={entryForm.description}
+                onChange={(e) => setEntryForm({ ...entryForm, description: e.target.value })}
+                placeholder={entryForm.type === "credit" ? "Ex: Reembolso, venda de material" : "Ex: Aluguel da sala, material"}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Valor (R$) *</Label>
+                <Input type="number" step="0.01" value={entryForm.amount} onChange={(e) => setEntryForm({ ...entryForm, amount: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data</Label>
+                <Input type="date" value={entryForm.entry_date} onChange={(e) => setEntryForm({ ...entryForm, entry_date: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Forma</Label>
+              <Select value={entryForm.method} onValueChange={(v) => setEntryForm({ ...entryForm, method: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">Pix</SelectItem>
+                  <SelectItem value="cash">Dinheiro</SelectItem>
+                  <SelectItem value="card">Cartão</SelectItem>
+                  <SelectItem value="transfer">Transferência</SelectItem>
+                  <SelectItem value="other">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Observações</Label>
+              <Textarea rows={2} value={entryForm.notes} onChange={(e) => setEntryForm({ ...entryForm, notes: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEntryDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={submitEntry}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

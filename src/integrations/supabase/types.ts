@@ -22,12 +22,14 @@ export type Database = {
           ends_at: string
           google_event_id: string | null
           id: string
+          meet_link: string | null
           modality: Database["public"]["Enums"]["appointment_modality"]
           notes: string | null
           patient_id: string
           price: number
           recurrence: Database["public"]["Enums"]["recurrence_type"]
           recurrence_group_id: string | null
+          reminder_sent_at: string | null
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
@@ -39,12 +41,14 @@ export type Database = {
           ends_at: string
           google_event_id?: string | null
           id?: string
+          meet_link?: string | null
           modality?: Database["public"]["Enums"]["appointment_modality"]
           notes?: string | null
           patient_id: string
           price?: number
           recurrence?: Database["public"]["Enums"]["recurrence_type"]
           recurrence_group_id?: string | null
+          reminder_sent_at?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -56,12 +60,14 @@ export type Database = {
           ends_at?: string
           google_event_id?: string | null
           id?: string
+          meet_link?: string | null
           modality?: Database["public"]["Enums"]["appointment_modality"]
           notes?: string | null
           patient_id?: string
           price?: number
           recurrence?: Database["public"]["Enums"]["recurrence_type"]
           recurrence_group_id?: string | null
+          reminder_sent_at?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -69,6 +75,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string
+          entry_date: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"] | null
+          notes: string | null
+          patient_id: string | null
+          type: Database["public"]["Enums"]["finance_entry_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          description: string
+          entry_date?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          patient_id?: string | null
+          type: Database["public"]["Enums"]["finance_entry_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          entry_date?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          patient_id?: string | null
+          type?: Database["public"]["Enums"]["finance_entry_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_entries_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
@@ -108,6 +164,8 @@ export type Database = {
           active: boolean
           address: string | null
           birth_date: string | null
+          city: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           default_session_price: number
@@ -120,12 +178,15 @@ export type Database = {
           phone: string | null
           responsible_name: string | null
           responsible_phone: string | null
+          state: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
           address?: string | null
           birth_date?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           default_session_price?: number
@@ -138,12 +199,15 @@ export type Database = {
           phone?: string | null
           responsible_name?: string | null
           responsible_phone?: string | null
+          state?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
           address?: string | null
           birth_date?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           default_session_price?: number
@@ -156,6 +220,7 @@ export type Database = {
           phone?: string | null
           responsible_name?: string | null
           responsible_phone?: string | null
+          state?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -272,6 +337,7 @@ export type Database = {
       app_role: "owner" | "secretary"
       appointment_modality: "in_person" | "online"
       appointment_status: "scheduled" | "done" | "canceled" | "no_show"
+      finance_entry_type: "credit" | "debit"
       payment_method: "pix" | "cash" | "card" | "transfer" | "other"
       recurrence_type: "none" | "weekly" | "biweekly"
     }
@@ -404,6 +470,7 @@ export const Constants = {
       app_role: ["owner", "secretary"],
       appointment_modality: ["in_person", "online"],
       appointment_status: ["scheduled", "done", "canceled", "no_show"],
+      finance_entry_type: ["credit", "debit"],
       payment_method: ["pix", "cash", "card", "transfer", "other"],
       recurrence_type: ["none", "weekly", "biweekly"],
     },

@@ -17,6 +17,9 @@ const schema = z
     email: z.string().trim().email("E-mail inválido").max(255).optional().or(z.literal("")),
     birth_date: z.string().optional().or(z.literal("")),
     address: z.string().trim().max(255).optional().or(z.literal("")),
+    city: z.string().trim().max(120).optional().or(z.literal("")),
+    state: z.string().trim().max(120).optional().or(z.literal("")),
+    country: z.string().trim().max(120).optional().or(z.literal("")),
     responsible_name: z.string().trim().max(120).optional().or(z.literal("")),
     responsible_phone: z.string().trim().max(30).optional().or(z.literal("")),
     default_session_price: z.coerce.number().min(0).max(99999),
@@ -44,6 +47,9 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     email: "",
     birth_date: "",
     address: "",
+    city: "",
+    state: "",
+    country: "Brasil",
     responsible_name: "",
     responsible_phone: "",
     default_session_price: 0,
@@ -60,6 +66,9 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
         email: patient.email ?? "",
         birth_date: patient.birth_date ?? "",
         address: patient.address ?? "",
+        city: patient.city ?? "",
+        state: patient.state ?? "",
+        country: patient.country ?? "",
         responsible_name: patient.responsible_name ?? "",
         responsible_phone: patient.responsible_phone ?? "",
         default_session_price: patient.default_session_price ?? 0,
@@ -70,6 +79,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     } else {
       setForm({
         full_name: "", phone: "", email: "", birth_date: "", address: "",
+        city: "", state: "", country: "Brasil",
         responsible_name: "", responsible_phone: "", default_session_price: 0,
         main_complaint: "", history: "", notes: "",
       });
@@ -91,6 +101,9 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       email: parsed.data.email || null,
       birth_date: parsed.data.birth_date || null,
       address: parsed.data.address || null,
+      city: parsed.data.city || null,
+      state: parsed.data.state || null,
+      country: parsed.data.country || null,
       responsible_name: parsed.data.responsible_name || null,
       responsible_phone: parsed.data.responsible_phone || null,
       default_session_price: parsed.data.default_session_price,
@@ -138,6 +151,11 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
               <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
             </div>
             <Field label="Endereço"><Input value={form.address} onChange={(e) => set("address", e.target.value)} /></Field>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <Field label="Cidade"><Input value={form.city} onChange={(e) => set("city", e.target.value)} /></Field>
+              <Field label="Estado / Província"><Input value={form.state} onChange={(e) => set("state", e.target.value)} /></Field>
+              <Field label="País"><Input value={form.country} onChange={(e) => set("country", e.target.value)} placeholder="Brasil" /></Field>
+            </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <Field label="Responsável (se menor)"><Input value={form.responsible_name} onChange={(e) => set("responsible_name", e.target.value)} /></Field>
               <Field label="Telefone do responsável"><Input value={form.responsible_phone} onChange={(e) => set("responsible_phone", e.target.value)} /></Field>
