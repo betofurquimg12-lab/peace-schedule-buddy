@@ -119,6 +119,20 @@ const Settings = () => {
               Sincronização bidirecional disponível em breve. Vamos conectar sua conta Google e configurar credenciais OAuth juntos.
             </p>
           </Card>
+
+          <Card className="p-5">
+            <h2 className="text-lg mb-1">E-mail (lembretes automáticos)</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Para enviar lembretes por e-mail 5 minutos antes de cada sessão (com o link do Meet),
+              é preciso configurar um domínio de envio próprio (ex.: <code>notify.seudominio.com.br</code>).
+              Quando tiver um domínio disponível, clique abaixo para configurar — o restante da
+              infraestrutura de envio (fila, templates, agendamento) será provisionado automaticamente.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Enquanto o domínio não estiver configurado, os lembretes ficam pausados.
+              As consultas continuam sendo criadas normalmente no Google Calendar com o link do Meet.
+            </p>
+          </Card>
         </div>
       )}
     </>
