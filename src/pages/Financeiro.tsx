@@ -232,6 +232,7 @@ const Financeiro = () => {
       <Tabs defaultValue="sessions">
         <TabsList>
           <TabsTrigger value="sessions">Sessões</TabsTrigger>
+          <TabsTrigger value="upcoming">A receber</TabsTrigger>
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
         </TabsList>
