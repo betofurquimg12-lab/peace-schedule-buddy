@@ -214,11 +214,12 @@ const Financeiro = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <Stat label="Faturamento sessões" value={formatBRL(totalDone)} />
         <Stat label="Recebido" value={formatBRL(totalReceived)} tone="success" />
-        <Stat label="Pendente" value={formatBRL(totalPending)} tone="warning" />
-        <Stat label="Resultado líquido" value={formatBRL(netResult)} tone={netResult >= 0 ? "success" : "warning"} />
+        <Stat label="Previsto a receber" value={formatBRL(totalScheduled)} tone="warning" />
+        <Stat label="Sem definição" value={formatBRL(totalPending)} tone="warning" />
+        <Stat label="Caixa (recebido)" value={formatBRL(netResult)} tone={netResult >= 0 ? "success" : "warning"} />
       </div>
 
       {(extraCredits > 0 || extraDebits > 0) && (
