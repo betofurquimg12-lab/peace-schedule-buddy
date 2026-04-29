@@ -419,6 +419,47 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               )}
             </div>
           )}
+
+          <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pagamento</div>
+            <Field label="Status do pagamento">
+              <Select value={form.payment_status} onValueChange={(v) => set("payment_status", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Em aberto</SelectItem>
+                  <SelectItem value="paid">Já pago</SelectItem>
+                  <SelectItem value="scheduled_payment">A pagar (com previsão)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            {form.payment_status !== "pending" && (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={form.payment_status === "paid" ? "Data do pagamento" : "Previsão de pagamento"}>
+                  <Input type="date" value={form.payment_date} onChange={(e) => set("payment_date", e.target.value)} />
+                </Field>
+                <Field label="Forma">
+                  <Select value={form.payment_method} onValueChange={(v) => set("payment_method", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pix">Pix</SelectItem>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
+                      <SelectItem value="card">Cartão</SelectItem>
+                      <SelectItem value="transfer">Transferência</SelectItem>
+                      <SelectItem value="other">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            )}
+            {existingPayment && (
+              <div className="text-[11px] text-muted-foreground">
+                {existingPayment.paid_at
+                  ? `Já registrado como pago em ${new Date(existingPayment.paid_at + "T00:00:00").toLocaleDateString("pt-BR")}`
+                  : `Previsão atual: ${new Date(existingPayment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}`}
+              </div>
+            )}
+          </div>
+
           <Field label="Observações"><Textarea rows={2} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
 
           {conflict && <div className="text-sm text-destructive">{conflict}</div>}
