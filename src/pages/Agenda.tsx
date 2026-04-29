@@ -108,8 +108,9 @@ const Agenda = () => {
           const dayAppts = appts.filter((a) => sameDay(new Date(a.starts_at), d));
           return (
             <div key={d.toISOString()}>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+              <div className={`text-xs uppercase tracking-wide mb-2 ${sameDay(d, new Date()) ? "text-primary font-semibold" : "text-muted-foreground"}`}>
                 {d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
+                {sameDay(d, new Date()) && <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-primary text-primary-foreground text-[10px]">Hoje</span>}
               </div>
               {dayAppts.length === 0 ? (
                 <Card className="p-3 text-xs text-muted-foreground" onClick={() => onSlot(d, 9)} role="button">
@@ -139,14 +140,23 @@ const Agenda = () => {
       <Card className="hidden md:block overflow-hidden">
         <div className="grid border-b text-xs" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
           <div />
-          {days.map((d) => (
-            <div key={d.toISOString()} className="p-2 text-center border-l">
-              <div className="text-muted-foreground uppercase">{d.toLocaleDateString("pt-BR", { weekday: "short" })}</div>
-              <div className={`font-semibold ${sameDay(d, new Date()) ? "text-primary" : ""}`}>
-                {d.getDate()}
+          {days.map((d) => {
+            const isToday = sameDay(d, new Date());
+            return (
+              <div key={d.toISOString()} className={`p-2 text-center border-l ${isToday ? "bg-primary/10" : ""}`}>
+                <div className={`uppercase ${isToday ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                  {d.toLocaleDateString("pt-BR", { weekday: "short" })}
+                </div>
+                {isToday ? (
+                  <div className="mt-0.5 inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                    {d.getDate()}
+                  </div>
+                ) : (
+                  <div className="font-semibold">{d.getDate()}</div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="max-h-[70vh] overflow-y-auto">
           {hours.map((h) => (
@@ -157,8 +167,9 @@ const Agenda = () => {
                   const dt = new Date(a.starts_at);
                   return sameDay(dt, d) && dt.getHours() === h;
                 });
+                const isToday = sameDay(d, new Date());
                 return (
-                  <div key={d.toISOString() + h} className="border-l p-1 relative cursor-pointer hover:bg-muted/30" onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
+                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
                     {slotAppts.map((a) => (
                       <button
                         key={a.id}
