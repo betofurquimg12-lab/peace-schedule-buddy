@@ -166,8 +166,9 @@ const Agenda = () => {
                   const dt = new Date(a.starts_at);
                   return sameDay(dt, d) && dt.getHours() === h;
                 });
+                const isToday = sameDay(d, new Date());
                 return (
-                  <div key={d.toISOString() + h} className="border-l p-1 relative cursor-pointer hover:bg-muted/30" onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
+                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
                     {slotAppts.map((a) => (
                       <button
                         key={a.id}
