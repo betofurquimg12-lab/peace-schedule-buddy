@@ -42,6 +42,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [patients, setPatients] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<string | null>(null);
+  const [existingPayment, setExistingPayment] = useState<any>(null);
   const [form, setForm] = useState<any>({
     patient_id: "",
     date: toLocalDate(new Date()),
@@ -53,6 +54,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     recurrence: "none",
     occurrences: 1,
     notes: "",
+    payment_status: "pending", // pending | paid | scheduled_payment
+    payment_date: toLocalDate(new Date()),
+    payment_method: "pix",
   });
 
   useEffect(() => {
@@ -65,6 +69,25 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     if (appointment) {
       const s = new Date(appointment.starts_at);
       const e = new Date(appointment.ends_at);
+      // load existing payment if any
+      void supabase
+        .from("payments")
+        .select("id, amount, paid_at, due_date, method, notes")
+        .eq("appointment_id", appointment.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setExistingPayment(data ?? null);
+          if (data) {
+            setForm((f: any) => ({
+              ...f,
+              payment_status: data.paid_at ? "paid" : "scheduled_payment",
+              payment_date: data.paid_at ?? data.due_date ?? toLocalDate(s),
+              payment_method: data.method ?? "pix",
+            }));
+          } else {
+            setForm((f: any) => ({ ...f, payment_status: "pending", payment_date: toLocalDate(s), payment_method: "pix" }));
+          }
+        });
       setForm({
         patient_id: appointment.patient?.id ?? appointment.patient_id,
         date: toLocalDate(s),
@@ -76,9 +99,13 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         recurrence: appointment.recurrence ?? "none",
         occurrences: 1,
         notes: appointment.notes ?? "",
+        payment_status: "pending",
+        payment_date: toLocalDate(s),
+        payment_method: "pix",
       });
     } else {
       const s = presetStart ?? new Date();
+      setExistingPayment(null);
       setForm((f: any) => ({
         ...f,
         patient_id: "",
@@ -91,6 +118,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         recurrence: "none",
         occurrences: 1,
         notes: "",
+        payment_status: "pending",
+        payment_date: toLocalDate(s),
+        payment_method: "pix",
       }));
     }
     setConflict(null);
@@ -200,6 +230,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
+      await upsertPayment(appointment.id, parsed.data.price);
+
       // Sync calendar (only for online or already-linked events)
       if (parsed.data.modality === "online" || appointment.google_event_id) {
         const result = await syncCalendar(
@@ -267,11 +299,46 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         }
       }
 
+      // Apply payment status to each newly created appointment
+      if (inserted) {
+        for (const row of inserted) {
+          await upsertPayment(row.id, parsed.data.price);
+        }
+      }
+
       setSaving(false);
       toast({ title: total > 1 ? `${total} agendamentos criados` : "Agendamento criado" });
     }
     onSaved();
     onOpenChange(false);
+  };
+
+  const upsertPayment = async (appointmentId: string, price: number) => {
+    const { data: existing } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("appointment_id", appointmentId)
+      .maybeSingle();
+
+    if (form.payment_status === "pending") {
+      if (existing) await supabase.from("payments").delete().eq("id", existing.id);
+      return;
+    }
+
+    const payload: any = {
+      appointment_id: appointmentId,
+      amount: price,
+      method: form.payment_method,
+      paid_at: form.payment_status === "paid" ? form.payment_date : null,
+      due_date: form.payment_status === "scheduled_payment" ? form.payment_date : null,
+      created_by: user?.id,
+    };
+
+    if (existing) {
+      await supabase.from("payments").update(payload).eq("id", existing.id);
+    } else {
+      await supabase.from("payments").insert(payload);
+    }
   };
 
   const remove = async () => {
@@ -352,6 +419,47 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               )}
             </div>
           )}
+
+          <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pagamento</div>
+            <Field label="Status do pagamento">
+              <Select value={form.payment_status} onValueChange={(v) => set("payment_status", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Em aberto</SelectItem>
+                  <SelectItem value="paid">Já pago</SelectItem>
+                  <SelectItem value="scheduled_payment">A pagar (com previsão)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            {form.payment_status !== "pending" && (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label={form.payment_status === "paid" ? "Data do pagamento" : "Previsão de pagamento"}>
+                  <Input type="date" value={form.payment_date} onChange={(e) => set("payment_date", e.target.value)} />
+                </Field>
+                <Field label="Forma">
+                  <Select value={form.payment_method} onValueChange={(v) => set("payment_method", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pix">Pix</SelectItem>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
+                      <SelectItem value="card">Cartão</SelectItem>
+                      <SelectItem value="transfer">Transferência</SelectItem>
+                      <SelectItem value="other">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            )}
+            {existingPayment && (
+              <div className="text-[11px] text-muted-foreground">
+                {existingPayment.paid_at
+                  ? `Já registrado como pago em ${new Date(existingPayment.paid_at + "T00:00:00").toLocaleDateString("pt-BR")}`
+                  : `Previsão atual: ${new Date(existingPayment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}`}
+              </div>
+            )}
+          </div>
+
           <Field label="Observações"><Textarea rows={2} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
 
           {conflict && <div className="text-sm text-destructive">{conflict}</div>}

@@ -21,6 +21,7 @@ const Financeiro = () => {
   const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
   const [appts, setAppts] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
+  const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any>(null);
   const [payForm, setPayForm] = useState({ amount: 0, paid_at: new Date().toISOString().slice(0,10), method: "pix" });
 
@@ -41,46 +42,66 @@ const Financeiro = () => {
   }, [month]);
 
   const load = async () => {
-    const [a, e] = await Promise.all([
+    const [a, e, upcoming] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, method)")
+        .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
         .order("starts_at", { ascending: false }),
       supabase
         .from("finance_entries")
         .select("id, type, description, amount, entry_date, method, notes")
-        .gte("entry_date", range.start.toISOString().slice(0,10))
-        .lt("entry_date", range.end.toISOString().slice(0,10))
+        .gte("entry_date", range.start.toISOString().slice(0, 10))
+        .lt("entry_date", range.end.toISOString().slice(0, 10))
         .order("entry_date", { ascending: false }),
+      // Upcoming receipts (regardless of month) – payments with due_date in the future and not yet paid
+      supabase
+        .from("payments")
+        .select("id, amount, due_date, method, notes, appointment:appointments(id, starts_at, patient:patients(id, full_name))")
+        .is("paid_at", null)
+        .not("due_date", "is", null)
+        .order("due_date", { ascending: true }),
     ]);
     setAppts(a.data ?? []);
     setEntries(e.data ?? []);
+    setUpcomingPayments(upcoming.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
 
   const realized = appts.filter((a) => a.status === "done");
   const totalDone = realized.reduce((s, a) => s + Number(a.price || 0), 0);
-  const totalReceived = realized.reduce((s, a) => s + (a.payment?.[0] ? Number(a.payment[0].amount) : 0), 0);
-  const totalPending = Math.max(0, totalDone - totalReceived);
+  // Recebido = apenas pagamentos com paid_at preenchido
+  const totalReceived = realized.reduce(
+    (s, a) => s + (a.payment?.[0]?.paid_at ? Number(a.payment[0].amount) : 0),
+    0,
+  );
+  // Previsto no mês = pagamentos sem paid_at mas com due_date
+  const totalScheduled = realized.reduce(
+    (s, a) => s + (a.payment?.[0] && !a.payment[0].paid_at && a.payment[0].due_date ? Number(a.payment[0].amount) : 0),
+    0,
+  );
+  const totalPending = Math.max(0, totalDone - totalReceived - totalScheduled);
 
   const extraCredits = entries.filter((e) => e.type === "credit").reduce((s, e) => s + Number(e.amount), 0);
   const extraDebits = entries.filter((e) => e.type === "debit").reduce((s, e) => s + Number(e.amount), 0);
+  // Caixa = só o que efetivamente entrou (recebido) menos débitos do mês
   const netResult = totalReceived + extraCredits - extraDebits;
 
   const byPatient = useMemo(() => {
-    const map = new Map<string, { name: string; phone: string | null; sessions: number; total: number; paid: number }>();
+    const map = new Map<string, { name: string; phone: string | null; sessions: number; total: number; paid: number; scheduled: number }>();
     realized.forEach((a) => {
       const k = a.patient?.id;
       if (!k) return;
-      const cur = map.get(k) ?? { name: a.patient.full_name, phone: a.patient.phone, sessions: 0, total: 0, paid: 0 };
+      const cur = map.get(k) ?? { name: a.patient.full_name, phone: a.patient.phone, sessions: 0, total: 0, paid: 0, scheduled: 0 };
       cur.sessions += 1;
       cur.total += Number(a.price || 0);
-      cur.paid += a.payment?.[0] ? Number(a.payment[0].amount) : 0;
+      const p = a.payment?.[0];
+      if (p?.paid_at) cur.paid += Number(p.amount);
+      else if (p?.due_date) cur.scheduled += Number(p.amount);
       map.set(k, cur);
     });
-    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v, balance: v.total - v.paid }));
+    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v, balance: v.total - v.paid - v.scheduled }));
   }, [realized]);
 
   const openPay = (a: any) => {
@@ -90,16 +111,32 @@ const Financeiro = () => {
 
   const confirmPay = async () => {
     if (!payDialog) return;
-    const { error } = await supabase.from("payments").insert({
+    const existing = payDialog.payment?.[0];
+    const payload: any = {
       appointment_id: payDialog.id,
       amount: payForm.amount,
       paid_at: payForm.paid_at,
+      due_date: null,
       method: payForm.method as any,
       created_by: user?.id,
-    });
+    };
+    const { error } = existing
+      ? await supabase.from("payments").update(payload).eq("id", existing.id)
+      : await supabase.from("payments").insert(payload);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     toast({ title: "Pagamento registrado" });
     setPayDialog(null);
+    void load();
+  };
+
+  const confirmReceiptUpcoming = async (p: any) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { error } = await supabase
+      .from("payments")
+      .update({ paid_at: today, due_date: null })
+      .eq("id", p.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Recebimento confirmado" });
     void load();
   };
 
@@ -177,11 +214,12 @@ const Financeiro = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <Stat label="Faturamento sessões" value={formatBRL(totalDone)} />
         <Stat label="Recebido" value={formatBRL(totalReceived)} tone="success" />
-        <Stat label="Pendente" value={formatBRL(totalPending)} tone="warning" />
-        <Stat label="Resultado líquido" value={formatBRL(netResult)} tone={netResult >= 0 ? "success" : "warning"} />
+        <Stat label="Previsto a receber" value={formatBRL(totalScheduled)} tone="warning" />
+        <Stat label="Sem definição" value={formatBRL(totalPending)} tone="warning" />
+        <Stat label="Caixa (recebido)" value={formatBRL(netResult)} tone={netResult >= 0 ? "success" : "warning"} />
       </div>
 
       {(extraCredits > 0 || extraDebits > 0) && (
@@ -194,6 +232,7 @@ const Financeiro = () => {
       <Tabs defaultValue="sessions">
         <TabsList>
           <TabsTrigger value="sessions">Sessões</TabsTrigger>
+          <TabsTrigger value="upcoming">A receber</TabsTrigger>
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
         </TabsList>
@@ -203,23 +242,37 @@ const Financeiro = () => {
             {realized.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Nenhuma sessão realizada no mês.</div>}
             {realized.map((a) => {
               const pay = a.payment?.[0];
+              const isPaid = !!pay?.paid_at;
+              const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
               return (
                 <div key={a.id} className="p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-medium truncate">{a.patient?.full_name}</div>
                     <div className="text-xs text-muted-foreground">{formatDateBR(a.starts_at)}</div>
+                    {isPaid && (
+                      <div className="text-[11px] text-success mt-0.5">
+                        Pago em {formatDateBR(pay.paid_at)} · {pay.method}
+                      </div>
+                    )}
+                    {isScheduled && (
+                      <div className="text-[11px] text-warning mt-0.5">
+                        Previsto para {formatDateBR(pay.due_date)} · {pay.method}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
-                      {pay ? (
-                        <Badge className="bg-success/15 text-success border-0">Pago · {pay.method}</Badge>
-                      ) : (
-                        <Badge variant="outline">Pendente</Badge>
-                      )}
+                      {isPaid && <Badge className="bg-success/15 text-success border-0">Pago</Badge>}
+                      {isScheduled && <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>}
+                      {!pay && <Badge variant="outline">Pendente</Badge>}
                     </div>
-                    {pay ? (
+                    {isPaid ? (
                       <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
+                    ) : isScheduled ? (
+                      <Button size="sm" onClick={() => confirmReceiptUpcoming(pay)}>
+                        <Check className="h-4 w-4" /> Recebi
+                      </Button>
                     ) : (
                       <>
                         {a.patient?.phone && (
@@ -236,6 +289,31 @@ const Financeiro = () => {
                 </div>
               );
             })}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="upcoming" className="mt-4">
+          <Card className="divide-y">
+            {upcomingPayments.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground text-center">Nenhum recebimento previsto.</div>
+            )}
+            {upcomingPayments.map((p) => (
+              <div key={p.id} className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{p.appointment?.patient?.full_name ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Sessão de {p.appointment?.starts_at ? formatDateBR(p.appointment.starts_at) : "—"} · Previsto em {formatDateBR(p.due_date)} · {p.method}
+                  </div>
+                  {p.notes && <div className="text-[11px] text-muted-foreground mt-0.5">{p.notes}</div>}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm font-semibold text-warning">{formatBRL(Number(p.amount))}</div>
+                  <Button size="sm" onClick={() => confirmReceiptUpcoming(p)}>
+                    <Check className="h-4 w-4" /> Recebi
+                  </Button>
+                </div>
+              </div>
+            ))}
           </Card>
         </TabsContent>
 
@@ -282,9 +360,10 @@ const Financeiro = () => {
                   <div className="font-medium">{p.name}</div>
                   <div className="text-xs text-muted-foreground">{p.sessions} sessões · Total {formatBRL(p.total)}</div>
                 </div>
-                <div className="text-right">
+                <div className="text-right space-y-0.5">
                   <div className="text-sm">Pago: <span className="text-success">{formatBRL(p.paid)}</span></div>
-                  <div className="text-sm">Saldo: <span className={p.balance > 0 ? "text-warning" : ""}>{formatBRL(p.balance)}</span></div>
+                  <div className="text-sm">A receber: <span className="text-warning">{formatBRL(p.scheduled)}</span></div>
+                  <div className="text-sm">Em aberto: <span className={p.balance > 0 ? "text-warning" : ""}>{formatBRL(p.balance)}</span></div>
                 </div>
               </div>
             ))}

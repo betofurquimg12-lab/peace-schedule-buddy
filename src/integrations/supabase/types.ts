@@ -264,30 +264,33 @@ export type Database = {
           appointment_id: string
           created_at: string
           created_by: string | null
+          due_date: string | null
           id: string
           method: Database["public"]["Enums"]["payment_method"]
           notes: string | null
-          paid_at: string
+          paid_at: string | null
         }
         Insert: {
           amount: number
           appointment_id: string
           created_at?: string
           created_by?: string | null
+          due_date?: string | null
           id?: string
           method?: Database["public"]["Enums"]["payment_method"]
           notes?: string | null
-          paid_at?: string
+          paid_at?: string | null
         }
         Update: {
           amount?: number
           appointment_id?: string
           created_at?: string
           created_by?: string | null
+          due_date?: string | null
           id?: string
           method?: Database["public"]["Enums"]["payment_method"]
           notes?: string | null
-          paid_at?: string
+          paid_at?: string | null
         }
         Relationships: [
           {
