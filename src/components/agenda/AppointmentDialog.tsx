@@ -299,11 +299,46 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         }
       }
 
+      // Apply payment status to each newly created appointment
+      if (inserted) {
+        for (const row of inserted) {
+          await upsertPayment(row.id, parsed.data.price);
+        }
+      }
+
       setSaving(false);
       toast({ title: total > 1 ? `${total} agendamentos criados` : "Agendamento criado" });
     }
     onSaved();
     onOpenChange(false);
+  };
+
+  const upsertPayment = async (appointmentId: string, price: number) => {
+    const { data: existing } = await supabase
+      .from("payments")
+      .select("id")
+      .eq("appointment_id", appointmentId)
+      .maybeSingle();
+
+    if (form.payment_status === "pending") {
+      if (existing) await supabase.from("payments").delete().eq("id", existing.id);
+      return;
+    }
+
+    const payload: any = {
+      appointment_id: appointmentId,
+      amount: price,
+      method: form.payment_method,
+      paid_at: form.payment_status === "paid" ? form.payment_date : null,
+      due_date: form.payment_status === "scheduled_payment" ? form.payment_date : null,
+      created_by: user?.id,
+    };
+
+    if (existing) {
+      await supabase.from("payments").update(payload).eq("id", existing.id);
+    } else {
+      await supabase.from("payments").insert(payload);
+    }
   };
 
   const remove = async () => {
