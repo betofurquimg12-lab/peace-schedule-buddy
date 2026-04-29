@@ -69,6 +69,25 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     if (appointment) {
       const s = new Date(appointment.starts_at);
       const e = new Date(appointment.ends_at);
+      // load existing payment if any
+      void supabase
+        .from("payments")
+        .select("id, amount, paid_at, due_date, method, notes")
+        .eq("appointment_id", appointment.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setExistingPayment(data ?? null);
+          if (data) {
+            setForm((f: any) => ({
+              ...f,
+              payment_status: data.paid_at ? "paid" : "scheduled_payment",
+              payment_date: data.paid_at ?? data.due_date ?? toLocalDate(s),
+              payment_method: data.method ?? "pix",
+            }));
+          } else {
+            setForm((f: any) => ({ ...f, payment_status: "pending", payment_date: toLocalDate(s), payment_method: "pix" }));
+          }
+        });
       setForm({
         patient_id: appointment.patient?.id ?? appointment.patient_id,
         date: toLocalDate(s),
@@ -80,9 +99,13 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         recurrence: appointment.recurrence ?? "none",
         occurrences: 1,
         notes: appointment.notes ?? "",
+        payment_status: "pending",
+        payment_date: toLocalDate(s),
+        payment_method: "pix",
       });
     } else {
       const s = presetStart ?? new Date();
+      setExistingPayment(null);
       setForm((f: any) => ({
         ...f,
         patient_id: "",
@@ -95,6 +118,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         recurrence: "none",
         occurrences: 1,
         notes: "",
+        payment_status: "pending",
+        payment_date: toLocalDate(s),
+        payment_method: "pix",
       }));
     }
     setConflict(null);
