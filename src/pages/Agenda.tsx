@@ -108,8 +108,9 @@ const Agenda = () => {
           const dayAppts = appts.filter((a) => sameDay(new Date(a.starts_at), d));
           return (
             <div key={d.toISOString()}>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+              <div className={`text-xs uppercase tracking-wide mb-2 ${sameDay(d, new Date()) ? "text-primary font-semibold" : "text-muted-foreground"}`}>
                 {d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
+                {sameDay(d, new Date()) && <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-primary text-primary-foreground text-[10px]">Hoje</span>}
               </div>
               {dayAppts.length === 0 ? (
                 <Card className="p-3 text-xs text-muted-foreground" onClick={() => onSlot(d, 9)} role="button">
