@@ -22,10 +22,30 @@ const Agenda = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [presetSlot, setPresetSlot] = useState<Date | null>(null);
+  const [settings, setSettings] = useState<{ weekdays: number[]; startHour: number; endHour: number }>({
+    weekdays: [1, 2, 3, 4, 5],
+    startHour: 7,
+    endHour: 20,
+  });
 
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(refDate); d.setDate(d.getDate() + i); return d;
-  }), [refDate]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("agenda_settings")
+        .select("weekdays, start_time, end_time")
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        const sh = parseInt(String(data.start_time).slice(0, 2), 10);
+        const eh = parseInt(String(data.end_time).slice(0, 2), 10);
+        setSettings({
+          weekdays: data.weekdays ?? [1, 2, 3, 4, 5],
+          startHour: isNaN(sh) ? 7 : sh,
+          endHour: isNaN(eh) ? 20 : Math.max(sh + 1, eh),
+        });
+      }
+    })();
+  }, []);
 
   const load = async () => {
     const start = new Date(refDate); start.setHours(0, 0, 0, 0);
