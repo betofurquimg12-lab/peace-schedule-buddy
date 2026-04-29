@@ -230,6 +230,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
+      await upsertPayment(appointment.id, parsed.data.price);
+
       // Sync calendar (only for online or already-linked events)
       if (parsed.data.modality === "online" || appointment.google_event_id) {
         const result = await syncCalendar(
