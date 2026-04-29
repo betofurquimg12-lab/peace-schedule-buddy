@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      agenda_settings: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          owner_id: string
+          slot_minutes: number
+          start_time: string
+          updated_at: string
+          weekdays: number[]
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          owner_id: string
+          slot_minutes?: number
+          start_time?: string
+          updated_at?: string
+          weekdays?: number[]
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          owner_id?: string
+          slot_minutes?: number
+          start_time?: string
+          updated_at?: string
+          weekdays?: number[]
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           created_at: string

@@ -22,10 +22,42 @@ const Agenda = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [presetSlot, setPresetSlot] = useState<Date | null>(null);
+  const [settings, setSettings] = useState<{ weekdays: number[]; startHour: number; endHour: number }>({
+    weekdays: [1, 2, 3, 4, 5],
+    startHour: 7,
+    endHour: 20,
+  });
 
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(refDate); d.setDate(d.getDate() + i); return d;
-  }), [refDate]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("agenda_settings")
+        .select("weekdays, start_time, end_time")
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        const sh = parseInt(String(data.start_time).slice(0, 2), 10);
+        const eh = parseInt(String(data.end_time).slice(0, 2), 10);
+        setSettings({
+          weekdays: data.weekdays ?? [1, 2, 3, 4, 5],
+          startHour: isNaN(sh) ? 7 : sh,
+          endHour: isNaN(eh) ? 20 : Math.max(sh + 1, eh),
+        });
+      }
+    })();
+  }, []);
+
+  const days = useMemo(() => {
+    const all = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(refDate); d.setDate(d.getDate() + i); return d;
+    });
+    return all.filter((d) => settings.weekdays.includes(d.getDay()));
+  }, [refDate, settings.weekdays]);
+
+  const hours = useMemo(
+    () => Array.from({ length: Math.max(0, settings.endHour - settings.startHour) }, (_, i) => settings.startHour + i),
+    [settings.startHour, settings.endHour]
+  );
 
   const load = async () => {
     const start = new Date(refDate); start.setHours(0, 0, 0, 0);
@@ -49,7 +81,9 @@ const Agenda = () => {
     setPresetSlot(d); setEditing(null); setOpen(true);
   };
 
-  const fmtRange = `${days[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${days[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
+  const weekStart = refDate;
+  const weekEnd = new Date(refDate); weekEnd.setDate(weekEnd.getDate() + 6);
+  const fmtRange = `${weekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${weekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
 
   return (
     <>
@@ -103,7 +137,7 @@ const Agenda = () => {
 
       {/* Desktop: week grid */}
       <Card className="hidden md:block overflow-hidden">
-        <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b text-xs">
+        <div className="grid border-b text-xs" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
           <div />
           {days.map((d) => (
             <div key={d.toISOString()} className="p-2 text-center border-l">
@@ -115,8 +149,8 @@ const Agenda = () => {
           ))}
         </div>
         <div className="max-h-[70vh] overflow-y-auto">
-          {Array.from({ length: 13 }, (_, i) => i + 7).map((h) => (
-            <div key={h} className="grid grid-cols-[60px_repeat(7,1fr)] border-b min-h-[56px]">
+          {hours.map((h) => (
+            <div key={h} className="grid border-b min-h-[56px]" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
               <div className="text-xs text-muted-foreground p-2 text-right">{String(h).padStart(2, "0")}:00</div>
               {days.map((d) => {
                 const slotAppts = appts.filter((a) => {

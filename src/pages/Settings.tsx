@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Mail } from "lucide-react";
+import { AgendaSettingsCard } from "@/components/settings/AgendaSettingsCard";
 
 const Settings = () => {
   const { role, user } = useAuth();
@@ -112,6 +113,8 @@ const Settings = () => {
               ))}
             </ul>
           </Card>
+
+          <AgendaSettingsCard />
 
           <Card className="p-5">
             <h2 className="text-lg mb-1">Google Calendar</h2>
