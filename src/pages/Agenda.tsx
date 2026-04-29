@@ -47,6 +47,18 @@ const Agenda = () => {
     })();
   }, []);
 
+  const days = useMemo(() => {
+    const all = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(refDate); d.setDate(d.getDate() + i); return d;
+    });
+    return all.filter((d) => settings.weekdays.includes(d.getDay()));
+  }, [refDate, settings.weekdays]);
+
+  const hours = useMemo(
+    () => Array.from({ length: Math.max(0, settings.endHour - settings.startHour) }, (_, i) => settings.startHour + i),
+    [settings.startHour, settings.endHour]
+  );
+
   const load = async () => {
     const start = new Date(refDate); start.setHours(0, 0, 0, 0);
     const end = new Date(refDate); end.setDate(end.getDate() + 7);
