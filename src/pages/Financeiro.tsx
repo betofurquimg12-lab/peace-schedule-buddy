@@ -360,9 +360,10 @@ const Financeiro = () => {
                   <div className="font-medium">{p.name}</div>
                   <div className="text-xs text-muted-foreground">{p.sessions} sessões · Total {formatBRL(p.total)}</div>
                 </div>
-                <div className="text-right">
+                <div className="text-right space-y-0.5">
                   <div className="text-sm">Pago: <span className="text-success">{formatBRL(p.paid)}</span></div>
-                  <div className="text-sm">Saldo: <span className={p.balance > 0 ? "text-warning" : ""}>{formatBRL(p.balance)}</span></div>
+                  <div className="text-sm">A receber: <span className="text-warning">{formatBRL(p.scheduled)}</span></div>
+                  <div className="text-sm">Em aberto: <span className={p.balance > 0 ? "text-warning" : ""}>{formatBRL(p.balance)}</span></div>
                 </div>
               </div>
             ))}
