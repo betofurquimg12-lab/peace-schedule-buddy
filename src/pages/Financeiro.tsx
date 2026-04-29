@@ -242,23 +242,37 @@ const Financeiro = () => {
             {realized.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Nenhuma sessão realizada no mês.</div>}
             {realized.map((a) => {
               const pay = a.payment?.[0];
+              const isPaid = !!pay?.paid_at;
+              const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
               return (
                 <div key={a.id} className="p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-medium truncate">{a.patient?.full_name}</div>
                     <div className="text-xs text-muted-foreground">{formatDateBR(a.starts_at)}</div>
+                    {isPaid && (
+                      <div className="text-[11px] text-success mt-0.5">
+                        Pago em {formatDateBR(pay.paid_at)} · {pay.method}
+                      </div>
+                    )}
+                    {isScheduled && (
+                      <div className="text-[11px] text-warning mt-0.5">
+                        Previsto para {formatDateBR(pay.due_date)} · {pay.method}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
-                      {pay ? (
-                        <Badge className="bg-success/15 text-success border-0">Pago · {pay.method}</Badge>
-                      ) : (
-                        <Badge variant="outline">Pendente</Badge>
-                      )}
+                      {isPaid && <Badge className="bg-success/15 text-success border-0">Pago</Badge>}
+                      {isScheduled && <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>}
+                      {!pay && <Badge variant="outline">Pendente</Badge>}
                     </div>
-                    {pay ? (
+                    {isPaid ? (
                       <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
+                    ) : isScheduled ? (
+                      <Button size="sm" onClick={() => confirmReceiptUpcoming(pay)}>
+                        <Check className="h-4 w-4" /> Recebi
+                      </Button>
                     ) : (
                       <>
                         {a.patient?.phone && (
@@ -275,6 +289,31 @@ const Financeiro = () => {
                 </div>
               );
             })}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="upcoming" className="mt-4">
+          <Card className="divide-y">
+            {upcomingPayments.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground text-center">Nenhum recebimento previsto.</div>
+            )}
+            {upcomingPayments.map((p) => (
+              <div key={p.id} className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{p.appointment?.patient?.full_name ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Sessão de {p.appointment?.starts_at ? formatDateBR(p.appointment.starts_at) : "—"} · Previsto em {formatDateBR(p.due_date)} · {p.method}
+                  </div>
+                  {p.notes && <div className="text-[11px] text-muted-foreground mt-0.5">{p.notes}</div>}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm font-semibold text-warning">{formatBRL(Number(p.amount))}</div>
+                  <Button size="sm" onClick={() => confirmReceiptUpcoming(p)}>
+                    <Check className="h-4 w-4" /> Recebi
+                  </Button>
+                </div>
+              </div>
+            ))}
           </Card>
         </TabsContent>
 
