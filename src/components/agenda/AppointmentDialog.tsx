@@ -42,6 +42,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [patients, setPatients] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<string | null>(null);
+  const [existingPayment, setExistingPayment] = useState<any>(null);
   const [form, setForm] = useState<any>({
     patient_id: "",
     date: toLocalDate(new Date()),
@@ -53,6 +54,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     recurrence: "none",
     occurrences: 1,
     notes: "",
+    payment_status: "pending", // pending | paid | scheduled_payment
+    payment_date: toLocalDate(new Date()),
+    payment_method: "pix",
   });
 
   useEffect(() => {
