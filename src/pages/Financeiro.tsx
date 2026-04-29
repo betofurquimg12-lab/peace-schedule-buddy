@@ -111,16 +111,32 @@ const Financeiro = () => {
 
   const confirmPay = async () => {
     if (!payDialog) return;
-    const { error } = await supabase.from("payments").insert({
+    const existing = payDialog.payment?.[0];
+    const payload: any = {
       appointment_id: payDialog.id,
       amount: payForm.amount,
       paid_at: payForm.paid_at,
+      due_date: null,
       method: payForm.method as any,
       created_by: user?.id,
-    });
+    };
+    const { error } = existing
+      ? await supabase.from("payments").update(payload).eq("id", existing.id)
+      : await supabase.from("payments").insert(payload);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     toast({ title: "Pagamento registrado" });
     setPayDialog(null);
+    void load();
+  };
+
+  const confirmReceiptUpcoming = async (p: any) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { error } = await supabase
+      .from("payments")
+      .update({ paid_at: today, due_date: null })
+      .eq("id", p.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Recebimento confirmado" });
     void load();
   };
 
