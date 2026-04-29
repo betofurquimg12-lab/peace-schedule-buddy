@@ -55,7 +55,7 @@ const Agenda = () => {
   }, [refDate, settings.weekdays]);
 
   const hours = useMemo(
-    () => Array.from({ length: Math.max(0, settings.endHour - settings.startHour) }, (_, i) => settings.startHour + i),
+    () => Array.from({ length: Math.max(0, settings.endHour - settings.startHour + 1) }, (_, i) => settings.startHour + i),
     [settings.startHour, settings.endHour]
   );
 
