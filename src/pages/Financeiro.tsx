@@ -41,46 +41,66 @@ const Financeiro = () => {
   }, [month]);
 
   const load = async () => {
-    const [a, e] = await Promise.all([
+    const [a, e, upcoming] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, method)")
+        .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
         .order("starts_at", { ascending: false }),
       supabase
         .from("finance_entries")
         .select("id, type, description, amount, entry_date, method, notes")
-        .gte("entry_date", range.start.toISOString().slice(0,10))
-        .lt("entry_date", range.end.toISOString().slice(0,10))
+        .gte("entry_date", range.start.toISOString().slice(0, 10))
+        .lt("entry_date", range.end.toISOString().slice(0, 10))
         .order("entry_date", { ascending: false }),
+      // Upcoming receipts (regardless of month) – payments with due_date in the future and not yet paid
+      supabase
+        .from("payments")
+        .select("id, amount, due_date, method, notes, appointment:appointments(id, starts_at, patient:patients(id, full_name))")
+        .is("paid_at", null)
+        .not("due_date", "is", null)
+        .order("due_date", { ascending: true }),
     ]);
     setAppts(a.data ?? []);
     setEntries(e.data ?? []);
+    setUpcomingPayments(upcoming.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
 
   const realized = appts.filter((a) => a.status === "done");
   const totalDone = realized.reduce((s, a) => s + Number(a.price || 0), 0);
-  const totalReceived = realized.reduce((s, a) => s + (a.payment?.[0] ? Number(a.payment[0].amount) : 0), 0);
-  const totalPending = Math.max(0, totalDone - totalReceived);
+  // Recebido = apenas pagamentos com paid_at preenchido
+  const totalReceived = realized.reduce(
+    (s, a) => s + (a.payment?.[0]?.paid_at ? Number(a.payment[0].amount) : 0),
+    0,
+  );
+  // Previsto no mês = pagamentos sem paid_at mas com due_date
+  const totalScheduled = realized.reduce(
+    (s, a) => s + (a.payment?.[0] && !a.payment[0].paid_at && a.payment[0].due_date ? Number(a.payment[0].amount) : 0),
+    0,
+  );
+  const totalPending = Math.max(0, totalDone - totalReceived - totalScheduled);
 
   const extraCredits = entries.filter((e) => e.type === "credit").reduce((s, e) => s + Number(e.amount), 0);
   const extraDebits = entries.filter((e) => e.type === "debit").reduce((s, e) => s + Number(e.amount), 0);
+  // Caixa = só o que efetivamente entrou (recebido) menos débitos do mês
   const netResult = totalReceived + extraCredits - extraDebits;
 
   const byPatient = useMemo(() => {
-    const map = new Map<string, { name: string; phone: string | null; sessions: number; total: number; paid: number }>();
+    const map = new Map<string, { name: string; phone: string | null; sessions: number; total: number; paid: number; scheduled: number }>();
     realized.forEach((a) => {
       const k = a.patient?.id;
       if (!k) return;
-      const cur = map.get(k) ?? { name: a.patient.full_name, phone: a.patient.phone, sessions: 0, total: 0, paid: 0 };
+      const cur = map.get(k) ?? { name: a.patient.full_name, phone: a.patient.phone, sessions: 0, total: 0, paid: 0, scheduled: 0 };
       cur.sessions += 1;
       cur.total += Number(a.price || 0);
-      cur.paid += a.payment?.[0] ? Number(a.payment[0].amount) : 0;
+      const p = a.payment?.[0];
+      if (p?.paid_at) cur.paid += Number(p.amount);
+      else if (p?.due_date) cur.scheduled += Number(p.amount);
       map.set(k, cur);
     });
-    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v, balance: v.total - v.paid }));
+    return Array.from(map.entries()).map(([id, v]) => ({ id, ...v, balance: v.total - v.paid - v.scheduled }));
   }, [realized]);
 
   const openPay = (a: any) => {
