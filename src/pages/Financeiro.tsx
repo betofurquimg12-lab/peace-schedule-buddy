@@ -71,15 +71,17 @@ const Financeiro = () => {
   };
   useEffect(() => { void load(); }, [month]);
 
-  const realized = appts.filter((a) => a.status === "done");
-  const totalDone = realized.reduce((s, a) => s + Number(a.price || 0), 0);
-  // Recebido = apenas pagamentos com paid_at preenchido
-  const totalReceived = realized.reduce(
+  // Sessões consideradas para o financeiro: todas as não canceladas (realizadas, agendadas, etc.)
+  const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show");
+  const realized = billable; // mantém nome usado abaixo
+  const totalDone = billable.reduce((s, a) => s + Number(a.price || 0), 0);
+  // Recebido = pagamentos com paid_at preenchido (independe do status da sessão)
+  const totalReceived = billable.reduce(
     (s, a) => s + (a.payment?.[0]?.paid_at ? Number(a.payment[0].amount) : 0),
     0,
   );
   // Previsto no mês = pagamentos sem paid_at mas com due_date
-  const totalScheduled = realized.reduce(
+  const totalScheduled = billable.reduce(
     (s, a) => s + (a.payment?.[0] && !a.payment[0].paid_at && a.payment[0].due_date ? Number(a.payment[0].amount) : 0),
     0,
   );
@@ -224,6 +226,7 @@ const Financeiro = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <Stat label="Faturamento sessões" value={formatBRL(totalDone)} />
+
         <Stat label="Recebido" value={formatBRL(totalReceived)} tone="success" />
         <Stat label="Previsto a receber" value={formatBRL(totalScheduled)} tone="warning" />
         <Stat label="Sem definição" value={formatBRL(totalPending)} tone="warning" />
