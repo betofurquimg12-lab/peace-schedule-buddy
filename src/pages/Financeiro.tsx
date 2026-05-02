@@ -316,7 +316,7 @@ const Financeiro = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-sm font-semibold text-warning">{formatBRL(Number(p.amount))}</div>
-                  <Button size="sm" onClick={() => confirmReceiptUpcoming(p)}>
+                  <Button size="sm" onClick={() => openReceiptDialog(p)}>
                     <Check className="h-4 w-4" /> Recebi
                   </Button>
                 </div>
