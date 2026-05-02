@@ -65,7 +65,11 @@ const Financeiro = () => {
         .not("due_date", "is", null)
         .order("due_date", { ascending: true }),
     ]);
-    setAppts(a.data ?? []);
+    const normalized = (a.data ?? []).map((row: any) => ({
+      ...row,
+      payment: Array.isArray(row.payment) ? row.payment : row.payment ? [row.payment] : [],
+    }));
+    setAppts(normalized);
     setEntries(e.data ?? []);
     setUpcomingPayments(upcoming.data ?? []);
   };
