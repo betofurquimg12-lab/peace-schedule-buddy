@@ -131,14 +131,20 @@ const Financeiro = () => {
     void load();
   };
 
-  const confirmReceiptUpcoming = async (p: any) => {
-    const today = new Date().toISOString().slice(0, 10);
+  const openReceiptDialog = (p: any) => {
+    setReceiptDialog(p);
+    setReceiptDate(p.due_date ?? new Date().toISOString().slice(0, 10));
+  };
+
+  const confirmReceiptUpcoming = async () => {
+    if (!receiptDialog) return;
     const { error } = await supabase
       .from("payments")
-      .update({ paid_at: today, due_date: null })
-      .eq("id", p.id);
+      .update({ paid_at: receiptDate, due_date: null })
+      .eq("id", receiptDialog.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     toast({ title: "Recebimento confirmado" });
+    setReceiptDialog(null);
     void load();
   };
 
