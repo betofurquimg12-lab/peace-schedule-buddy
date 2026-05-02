@@ -24,6 +24,8 @@ const Financeiro = () => {
   const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any>(null);
   const [payForm, setPayForm] = useState({ amount: 0, paid_at: new Date().toISOString().slice(0,10), method: "pix" });
+  const [receiptDialog, setReceiptDialog] = useState<any>(null);
+  const [receiptDate, setReceiptDate] = useState(new Date().toISOString().slice(0,10));
 
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [entryForm, setEntryForm] = useState<any>({
@@ -129,14 +131,20 @@ const Financeiro = () => {
     void load();
   };
 
-  const confirmReceiptUpcoming = async (p: any) => {
-    const today = new Date().toISOString().slice(0, 10);
+  const openReceiptDialog = (p: any) => {
+    setReceiptDialog(p);
+    setReceiptDate(p.due_date ?? new Date().toISOString().slice(0, 10));
+  };
+
+  const confirmReceiptUpcoming = async () => {
+    if (!receiptDialog) return;
     const { error } = await supabase
       .from("payments")
-      .update({ paid_at: today, due_date: null })
-      .eq("id", p.id);
+      .update({ paid_at: receiptDate, due_date: null })
+      .eq("id", receiptDialog.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     toast({ title: "Recebimento confirmado" });
+    setReceiptDialog(null);
     void load();
   };
 
@@ -270,7 +278,7 @@ const Financeiro = () => {
                     {isPaid ? (
                       <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
                     ) : isScheduled ? (
-                      <Button size="sm" onClick={() => confirmReceiptUpcoming(pay)}>
+                      <Button size="sm" onClick={() => openReceiptDialog(pay)}>
                         <Check className="h-4 w-4" /> Recebi
                       </Button>
                     ) : (
@@ -308,7 +316,7 @@ const Financeiro = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-sm font-semibold text-warning">{formatBRL(Number(p.amount))}</div>
-                  <Button size="sm" onClick={() => confirmReceiptUpcoming(p)}>
+                  <Button size="sm" onClick={() => openReceiptDialog(p)}>
                     <Check className="h-4 w-4" /> Recebi
                   </Button>
                 </div>
@@ -456,6 +464,26 @@ const Financeiro = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEntryDialogOpen(false)}>Cancelar</Button>
             <Button onClick={submitEntry}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog: confirmar recebimento (escolher data) */}
+      <Dialog open={!!receiptDialog} onOpenChange={(o) => !o && setReceiptDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Confirmar recebimento</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {receiptDialog?.appointment?.patient?.full_name ?? receiptDialog?.patient?.full_name} ·{" "}
+              {formatBRL(Number(receiptDialog?.amount ?? receiptDialog?.price ?? 0))}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Data do recebimento</Label>
+              <Input type="date" value={receiptDate} onChange={(e) => setReceiptDate(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptDialog(null)}>Cancelar</Button>
+            <Button onClick={confirmReceiptUpcoming}>Confirmar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
