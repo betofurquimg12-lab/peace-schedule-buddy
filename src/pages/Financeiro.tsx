@@ -24,6 +24,8 @@ const Financeiro = () => {
   const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any>(null);
   const [payForm, setPayForm] = useState({ amount: 0, paid_at: new Date().toISOString().slice(0,10), method: "pix" });
+  const [receiptDialog, setReceiptDialog] = useState<any>(null);
+  const [receiptDate, setReceiptDate] = useState(new Date().toISOString().slice(0,10));
 
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [entryForm, setEntryForm] = useState<any>({
