@@ -467,6 +467,26 @@ const Financeiro = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Dialog: confirmar recebimento (escolher data) */}
+      <Dialog open={!!receiptDialog} onOpenChange={(o) => !o && setReceiptDialog(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Confirmar recebimento</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {receiptDialog?.appointment?.patient?.full_name ?? receiptDialog?.patient?.full_name} ·{" "}
+              {formatBRL(Number(receiptDialog?.amount ?? receiptDialog?.price ?? 0))}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Data do recebimento</Label>
+              <Input type="date" value={receiptDate} onChange={(e) => setReceiptDate(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptDialog(null)}>Cancelar</Button>
+            <Button onClick={confirmReceiptUpcoming}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
