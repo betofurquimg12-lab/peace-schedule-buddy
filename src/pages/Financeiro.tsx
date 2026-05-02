@@ -278,7 +278,7 @@ const Financeiro = () => {
                     {isPaid ? (
                       <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
                     ) : isScheduled ? (
-                      <Button size="sm" onClick={() => confirmReceiptUpcoming(pay)}>
+                      <Button size="sm" onClick={() => openReceiptDialog(pay)}>
                         <Check className="h-4 w-4" /> Recebi
                       </Button>
                     ) : (
