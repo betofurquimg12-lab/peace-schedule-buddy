@@ -126,7 +126,22 @@ const Agenda = () => {
                           <div className="font-medium text-sm">{a.patient?.full_name}</div>
                           <div className="text-xs text-muted-foreground">{hm(a.starts_at)} – {hm(a.ends_at)}</div>
                         </div>
-                        <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>
+                        <div className="flex items-center gap-2">
+                          {a.patient?.phone && (
+                            <a
+                              href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
+                              aria-label="Enviar lembrete pelo WhatsApp"
+                              title="Enviar lembrete pelo WhatsApp"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </a>
+                          )}
+                          <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -172,14 +187,28 @@ const Agenda = () => {
                 return (
                   <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
                     {slotAppts.map((a) => (
-                      <button
-                        key={a.id}
-                        onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
-                        className="block w-full text-left bg-primary/15 hover:bg-primary/25 text-primary rounded-md px-2 py-1 text-xs mb-1"
-                      >
-                        <div className="font-medium truncate">{a.patient?.full_name}</div>
-                        <div className="opacity-80">{hm(a.starts_at)}</div>
-                      </button>
+                      <div key={a.id} className="relative mb-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
+                          className="block w-full text-left bg-primary/15 hover:bg-primary/25 text-primary rounded-md px-2 py-1 text-xs"
+                        >
+                          <div className="font-medium truncate pr-6">{a.patient?.full_name}</div>
+                          <div className="opacity-80">{hm(a.starts_at)}</div>
+                        </button>
+                        {a.patient?.phone && (
+                          <a
+                            href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute top-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
+                            aria-label="Enviar lembrete pelo WhatsApp"
+                            title="Enviar lembrete pelo WhatsApp"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
                     ))}
                   </div>
                 );
