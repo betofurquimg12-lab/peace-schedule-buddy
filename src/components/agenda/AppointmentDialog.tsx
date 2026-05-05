@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2 } from "lucide-react";
+import { Trash2, MessageCircle } from "lucide-react";
+import { buildSessionWaUrl } from "@/lib/sessionReminder";
 
 type Props = {
   open: boolean;
@@ -469,6 +470,23 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           {appointment && (
             <Button variant="ghost" onClick={remove} className="text-destructive hover:text-destructive mr-auto">
               <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          {appointment?.patient?.phone && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const url = buildSessionWaUrl({
+                  phone: appointment.patient.phone,
+                  patientName: appointment.patient.full_name,
+                  startsAt: appointment.starts_at,
+                  meetLink: appointment.meet_link,
+                });
+                window.open(url, "_blank", "noopener,noreferrer");
+              }}
+            >
+              <MessageCircle className="h-4 w-4" /> WhatsApp
             </Button>
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
