@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { formatBRL } from "@/lib/format";
+import { buildSessionWaUrl } from "@/lib/sessionReminder";
 import { Badge } from "@/components/ui/badge";
 
 const startOfWeek = (d: Date) => {
@@ -64,7 +65,7 @@ const Agenda = () => {
     const end = new Date(refDate); end.setDate(end.getDate() + 7);
     const { data } = await supabase
       .from("appointments")
-      .select("id, starts_at, ends_at, price, status, patient:patients(id, full_name)")
+      .select("id, starts_at, ends_at, price, status, meet_link, patient:patients(id, full_name, phone)")
       .gte("starts_at", start.toISOString())
       .lt("starts_at", end.toISOString())
       .order("starts_at");
