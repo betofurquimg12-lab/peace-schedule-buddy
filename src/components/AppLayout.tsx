@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Calendar, Users, LayoutDashboard, Wallet, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useUpcomingSessionAlerts } from "@/hooks/useUpcomingSessionAlerts";
 
 const nav = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
@@ -14,6 +15,7 @@ const nav = [
 
 export const AppLayout = () => {
   const { user, role, signOut } = useAuth();
+  useUpcomingSessionAlerts(!!user);
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
       <aside className="md:w-60 md:min-h-screen bg-sidebar text-sidebar-foreground flex md:flex-col border-b md:border-b-0 md:border-r border-sidebar-border">
