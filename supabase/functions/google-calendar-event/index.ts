@@ -83,7 +83,11 @@ Deno.serve(async (req) => {
       },
       reminders: {
         useDefault: false,
-        overrides: [{ method: 'popup', minutes: 10 }],
+        overrides: [
+          { method: 'email', minutes: 1440 },
+          { method: 'email', minutes: 10 },
+          { method: 'popup', minutes: 5 },
+        ],
       },
     };
 

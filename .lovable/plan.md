@@ -1,57 +1,72 @@
-## Visão Geral
-App web para sua esposa (psicóloga) gerenciar atendimentos, com acesso também para secretária(s). Inclui agenda, cadastro de pacientes, integração com WhatsApp e Google Calendar, e controle financeiro das sessões.
+# Plano: Lembretes de sessão (WhatsApp 1-clique + Google Calendar + alerta 5 min antes)
 
-## 1. Autenticação e Papéis
-- Login por **e-mail/senha** e **Google**.
-- Dois papéis:
-  - **Psicóloga (owner)** → acesso total, incluindo notas clínicas e financeiro.
-  - **Secretária** → cadastra pacientes, agenda consultas e marca pagamentos. **Não vê notas clínicas.**
-- Tela para a psicóloga convidar/remover secretárias por e-mail.
+Três camadas combinadas, todas grátis:
 
-## 2. Cadastro de Pacientes
-- Campos obrigatórios: **nome** + **telefone OU e-mail**.
-- Campos opcionais: data de nascimento, endereço resumido, responsável (se menor).
-- **Dados clínicos simples**: queixa principal, histórico breve, observações por sessão (visível só para a psicóloga).
-- **Valor da sessão por paciente** (configurável individualmente, usado como padrão ao agendar).
-- Botão **"Abrir WhatsApp"** → abre `wa.me/<telefone>` em nova aba, com templates rápidos (confirmação, lembrete, reagendamento).
-- Histórico de sessões e situação financeira do paciente na ficha.
+1. **WhatsApp manual** — botão de 1 clique na agenda com mensagem pronta + link do Meet.
+2. **Google Calendar** — lembretes automáticos por e-mail para o paciente (já que o paciente é convidado do evento).
+3. **Alerta 5 min antes para você (psicóloga/secretária)** — uma notificação dentro do app que abre direto o WhatsApp com a mensagem pronta. Basta clicar "Enviar".
 
-## 3. Calendário e Agendamentos
-- Visualização **mês / semana / dia**, responsiva.
-- Criar agendamento direto da grade (clique no horário) ou pelo botão "+ Nova consulta".
-- Campos do agendamento: paciente, data/hora, duração (padrão 50min), modalidade (presencial/online), valor (puxa do paciente, editável), status (agendada / realizada / cancelada / faltou).
-- Detecção de conflito de horário com aviso.
-- Suporte a **recorrência** (semanal, quinzenal).
-- Arrastar para reagendar.
+---
 
-## 4. Controle Financeiro
-- Cada sessão tem **valor** e **status de pagamento**: Pendente / Pago.
-- Ao marcar como pago: registrar **data de pagamento** e **forma** (Pix, dinheiro, cartão, transferência).
-- Tela **"Financeiro"** com:
-  - **Resumo mensal**: total recebido, total pendente, nº de atendimentos realizados, ticket médio.
-  - **Por paciente**: extrato com sessões, valores, pago/pendente e saldo devedor.
-  - Filtros por período e por status.
-- Botão "Cobrar via WhatsApp" em sessões pendentes → abre `wa.me` com mensagem pré-pronta do valor em aberto.
+## Parte A — Botão de WhatsApp na Agenda
 
-## 5. Dashboard Inicial
-- Próximos atendimentos do dia/semana.
-- Pacientes com pagamento pendente.
-- Resumo rápido do mês (faturamento e sessões).
+**Onde:** card de cada consulta (semana desktop e lista mobile) e dentro do `AppointmentDialog` ao editar.
 
-## 6. Integração Google Calendar (bidirecional, só da psicóloga)
-- A psicóloga conecta a conta Google nas configurações (OAuth).
-- Sincronização bidirecional do calendário principal:
-  - Agendamentos criados no app aparecem no Google Calendar.
-  - Eventos criados/movidos no Google se refletem no app.
-- Secretária **não** conecta calendário próprio — ela vê e edita o calendário da psicóloga dentro do app.
-- *Observação:* essa integração exige configuração de credenciais OAuth no Google Cloud Console (Client ID e Secret). Faremos isso em uma etapa dedicada, e eu te guio passo a passo quando chegarmos lá.
+**Comportamento:**
+- Ícone do WhatsApp ao lado do nome do paciente. Só aparece se houver telefone.
+- Clique abre `wa.me/55XXXXX` em nova aba com mensagem pré-preenchida:
+  > Oi, {nome}! Passando para lembrar da sua sessão hoje às {hora}. Link da sala: {meet_link}. Qualquer coisa me avisa.
+- Se for presencial (sem `meet_link`), a frase do link é omitida.
+- Reaproveita `buildWaUrl` em `src/lib/format.ts`.
 
-## Ordem de Construção
-1. **Fundação**: login, papéis (psicóloga/secretária), convites.
-2. **Pacientes**: cadastro, ficha, valor por paciente, notas clínicas, botão WhatsApp.
-3. **Calendário**: agenda visual, criar/editar/recorrência, status da sessão.
-4. **Financeiro**: marcação de pagamento, resumo mensal e extrato por paciente, cobrança via WhatsApp.
-5. **Dashboard**: visão geral.
-6. **Google Calendar**: OAuth + sincronização bidirecional.
+**Arquivos:**
+- `src/pages/Agenda.tsx` — incluir `phone`, `meet_link` no select e botão nos cards.
+- `src/components/agenda/AppointmentDialog.tsx` — botão "Enviar lembrete pelo WhatsApp" no rodapé ao editar.
 
-Vou começar pelas etapas 1 a 5 assim que aprovar. A etapa 6 entra logo em seguida, com as instruções para gerar as credenciais Google.
+---
+
+## Parte B — Alerta automático 5 min antes (dentro do app)
+
+Como o WhatsApp não pode ser enviado de forma 100% automática sem custo, a solução é: o app monitora a agenda e **5 minutos antes** de cada sessão mostra um pop-up/toast com o botão "Enviar WhatsApp agora" já carregado com a mensagem e o link do Meet.
+
+**Como funciona (tudo no front, sem custo):**
+- Hook global `useUpcomingSessionAlerts` rodando no `AppLayout` enquanto o usuário estiver logado.
+- A cada 60 segundos, busca consultas das próximas 10 minutos.
+- Quando uma consulta entra na janela de 5 min antes do início e ainda não foi alertada, abre um **toast persistente** (sonner) com:
+  - Nome do paciente, horário, link do Meet.
+  - Botão **"Abrir WhatsApp"** (mesma URL `wa.me` da Parte A).
+  - Botão **"Dispensar"**.
+- Para evitar repetir o alerta após dispensar/recarregar, marca como visto em `localStorage` (chave por `appointment_id`).
+- Adicional: solicita permissão de notificação do navegador uma vez; se concedida, dispara também uma `Notification` nativa do sistema operacional — útil quando a aba está em background.
+
+**Limitação honesta a comunicar ao usuário:** o alerta só dispara se o app estiver aberto numa aba do navegador (mesmo em background). Se o navegador estiver fechado, não toca. Por isso o Google Calendar (Parte C) entra como reforço.
+
+**Arquivos novos:**
+- `src/hooks/useUpcomingSessionAlerts.ts`
+- `src/components/agenda/SessionAlertToast.tsx` (conteúdo do toast com os botões)
+
+**Arquivo editado:**
+- `src/components/AppLayout.tsx` — montar o hook quando autenticado.
+
+---
+
+## Parte C — Lembrete automático do Google Calendar para o paciente
+
+A função `google-calendar-event` já cria evento com Meet e envia convite (`sendUpdates=all`). Hoje configura só 1 popup de 10 min. Vou ajustar `reminders.overrides` para:
+
+- E-mail 1 dia antes (1440 min)
+- E-mail 10 min antes
+- Popup 5 min antes
+
+Esses lembretes vão para o paciente **se ele tiver e-mail cadastrado** no agendamento. No `AppointmentDialog`, mostrar aviso discreto quando o paciente não tiver e-mail.
+
+**Arquivo:**
+- `supabase/functions/google-calendar-event/index.ts` — atualizar `reminders.overrides`.
+
+---
+
+## O que NÃO entra agora
+
+- Envio automático de WhatsApp pelo servidor (precisaria Twilio pago — adiável).
+- Templates editáveis em Configurações (próxima iteração).
+- Job server-side (cron + edge function) para o alerta — desnecessário porque o disparo precisa de ação humana de qualquer jeito; rodar no cliente é suficiente e mais simples.
