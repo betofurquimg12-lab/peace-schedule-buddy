@@ -77,6 +77,7 @@ export type Database = {
           created_by: string | null
           duration_minutes: number
           ends_at: string
+          external_summary: string | null
           google_etag: string | null
           google_event_id: string | null
           google_updated_at: string | null
@@ -85,7 +86,7 @@ export type Database = {
           meet_link: string | null
           modality: Database["public"]["Enums"]["appointment_modality"]
           notes: string | null
-          patient_id: string
+          patient_id: string | null
           price: number
           recurrence: Database["public"]["Enums"]["recurrence_type"]
           recurrence_end_date: string | null
@@ -101,6 +102,7 @@ export type Database = {
           created_by?: string | null
           duration_minutes?: number
           ends_at: string
+          external_summary?: string | null
           google_etag?: string | null
           google_event_id?: string | null
           google_updated_at?: string | null
@@ -109,7 +111,7 @@ export type Database = {
           meet_link?: string | null
           modality?: Database["public"]["Enums"]["appointment_modality"]
           notes?: string | null
-          patient_id: string
+          patient_id?: string | null
           price?: number
           recurrence?: Database["public"]["Enums"]["recurrence_type"]
           recurrence_end_date?: string | null
@@ -125,6 +127,7 @@ export type Database = {
           created_by?: string | null
           duration_minutes?: number
           ends_at?: string
+          external_summary?: string | null
           google_etag?: string | null
           google_event_id?: string | null
           google_updated_at?: string | null
@@ -133,7 +136,7 @@ export type Database = {
           meet_link?: string | null
           modality?: Database["public"]["Enums"]["appointment_modality"]
           notes?: string | null
-          patient_id?: string
+          patient_id?: string | null
           price?: number
           recurrence?: Database["public"]["Enums"]["recurrence_type"]
           recurrence_end_date?: string | null
