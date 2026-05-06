@@ -125,32 +125,39 @@ const Agenda = () => {
                 </Card>
               ) : (
                 <div className="space-y-2">
-                  {dayAppts.map((a) => (
-                    <Card key={a.id} className="p-3 cursor-pointer" onClick={() => { setEditing(a); setOpen(true); }}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-sm">{a.patient?.full_name}</div>
-                          <div className="text-xs text-muted-foreground">{hm(a.starts_at)} – {hm(a.ends_at)}</div>
+                  {dayAppts.map((a) => {
+                    const ext = a.source === "google";
+                    return (
+                      <Card key={a.id} className={`p-3 cursor-pointer ${ext ? "border-dashed bg-muted/30" : ""}`} onClick={() => { setEditing(a); setOpen(true); }}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-sm flex items-center gap-1.5">
+                              {ext && <span title="Bloqueado · vindo do Google Calendar">🔒</span>}
+                              {ext ? (a.external_summary ?? "Evento do Google") : a.patient?.full_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{hm(a.starts_at)} – {hm(a.ends_at)}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!ext && a.patient?.phone && (
+                              <a
+                                href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
+                                aria-label="Enviar lembrete pelo WhatsApp"
+                                title="Enviar lembrete pelo WhatsApp"
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </a>
+                            )}
+                            {!ext && <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>}
+                            {ext && <Badge variant="outline" className="text-[10px]">Bloqueado</Badge>}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {a.patient?.phone && (
-                            <a
-                              href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
-                              aria-label="Enviar lembrete pelo WhatsApp"
-                              title="Enviar lembrete pelo WhatsApp"
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                            </a>
-                          )}
-                          <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </div>
