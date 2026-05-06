@@ -199,30 +199,35 @@ const Agenda = () => {
                 const isToday = sameDay(d, new Date());
                 return (
                   <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
-                    {slotAppts.map((a) => (
-                      <div key={a.id} className="relative mb-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
-                          className="block w-full text-left bg-primary/15 hover:bg-primary/25 text-primary rounded-md px-2 py-1 text-xs"
-                        >
-                          <div className="font-medium truncate pr-6">{a.patient?.full_name}</div>
-                          <div className="opacity-80">{hm(a.starts_at)}</div>
-                        </button>
-                        {a.patient?.phone && (
-                          <a
-                            href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute top-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
-                            aria-label="Enviar lembrete pelo WhatsApp"
-                            title="Enviar lembrete pelo WhatsApp"
+                    {slotAppts.map((a) => {
+                      const ext = a.source === "google";
+                      return (
+                        <div key={a.id} className="relative mb-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
+                            className={`block w-full text-left rounded-md px-2 py-1 text-xs ${ext ? "bg-muted text-muted-foreground border border-dashed" : "bg-primary/15 hover:bg-primary/25 text-primary"}`}
                           >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                          </a>
-                        )}
-                      </div>
-                    ))}
+                            <div className="font-medium truncate pr-6">
+                              {ext ? `🔒 ${a.external_summary ?? "Google"}` : a.patient?.full_name}
+                            </div>
+                            <div className="opacity-80">{hm(a.starts_at)}</div>
+                          </button>
+                          {!ext && a.patient?.phone && (
+                            <a
+                              href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute top-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
+                              aria-label="Enviar lembrete pelo WhatsApp"
+                              title="Enviar lembrete pelo WhatsApp"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
