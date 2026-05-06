@@ -69,6 +69,24 @@ Deno.serve(async (req) => {
 
     if (!body.starts_at || !body.ends_at) return json({ error: 'starts_at and ends_at required' }, 400);
 
+    // Load reminder settings (single owner row); fall back to sensible defaults
+    const { data: settings } = await supabase
+      .from('agenda_settings')
+      .select('reminder_email_day_before_enabled, reminder_email_day_before_minutes, reminder_email_before_enabled, reminder_email_before_minutes, reminder_popup_enabled, reminder_popup_minutes')
+      .limit(1)
+      .maybeSingle();
+
+    const overrides: { method: string; minutes: number }[] = [];
+    if (settings?.reminder_email_day_before_enabled ?? true) {
+      overrides.push({ method: 'email', minutes: settings?.reminder_email_day_before_minutes ?? 1440 });
+    }
+    if (settings?.reminder_email_before_enabled ?? true) {
+      overrides.push({ method: 'email', minutes: settings?.reminder_email_before_minutes ?? 10 });
+    }
+    if (settings?.reminder_popup_enabled ?? true) {
+      overrides.push({ method: 'popup', minutes: settings?.reminder_popup_minutes ?? 5 });
+    }
+
     const eventPayload = {
       summary: body.summary ?? 'Sessão',
       description: body.description ?? '',
@@ -81,14 +99,9 @@ Deno.serve(async (req) => {
           conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
       },
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 1440 },
-          { method: 'email', minutes: 10 },
-          { method: 'popup', minutes: 5 },
-        ],
-      },
+      reminders: overrides.length
+        ? { useDefault: false, overrides }
+        : { useDefault: true },
     };
 
     let response: Response;

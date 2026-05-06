@@ -20,6 +20,14 @@ export type Database = {
           end_time: string
           id: string
           owner_id: string
+          reminder_app_enabled: boolean
+          reminder_app_minutes: number
+          reminder_email_before_enabled: boolean
+          reminder_email_before_minutes: number
+          reminder_email_day_before_enabled: boolean
+          reminder_email_day_before_minutes: number
+          reminder_popup_enabled: boolean
+          reminder_popup_minutes: number
           slot_minutes: number
           start_time: string
           updated_at: string
@@ -30,6 +38,14 @@ export type Database = {
           end_time?: string
           id?: string
           owner_id: string
+          reminder_app_enabled?: boolean
+          reminder_app_minutes?: number
+          reminder_email_before_enabled?: boolean
+          reminder_email_before_minutes?: number
+          reminder_email_day_before_enabled?: boolean
+          reminder_email_day_before_minutes?: number
+          reminder_popup_enabled?: boolean
+          reminder_popup_minutes?: number
           slot_minutes?: number
           start_time?: string
           updated_at?: string
@@ -40,6 +56,14 @@ export type Database = {
           end_time?: string
           id?: string
           owner_id?: string
+          reminder_app_enabled?: boolean
+          reminder_app_minutes?: number
+          reminder_email_before_enabled?: boolean
+          reminder_email_before_minutes?: number
+          reminder_email_day_before_enabled?: boolean
+          reminder_email_day_before_minutes?: number
+          reminder_popup_enabled?: boolean
+          reminder_popup_minutes?: number
           slot_minutes?: number
           start_time?: string
           updated_at?: string
@@ -53,16 +77,22 @@ export type Database = {
           created_by: string | null
           duration_minutes: number
           ends_at: string
+          external_summary: string | null
+          google_etag: string | null
           google_event_id: string | null
+          google_updated_at: string | null
           id: string
+          last_synced_at: string | null
           meet_link: string | null
           modality: Database["public"]["Enums"]["appointment_modality"]
           notes: string | null
-          patient_id: string
+          patient_id: string | null
           price: number
           recurrence: Database["public"]["Enums"]["recurrence_type"]
+          recurrence_end_date: string | null
           recurrence_group_id: string | null
           reminder_sent_at: string | null
+          source: string
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
@@ -72,16 +102,22 @@ export type Database = {
           created_by?: string | null
           duration_minutes?: number
           ends_at: string
+          external_summary?: string | null
+          google_etag?: string | null
           google_event_id?: string | null
+          google_updated_at?: string | null
           id?: string
+          last_synced_at?: string | null
           meet_link?: string | null
           modality?: Database["public"]["Enums"]["appointment_modality"]
           notes?: string | null
-          patient_id: string
+          patient_id?: string | null
           price?: number
           recurrence?: Database["public"]["Enums"]["recurrence_type"]
+          recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           reminder_sent_at?: string | null
+          source?: string
           starts_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -91,16 +127,22 @@ export type Database = {
           created_by?: string | null
           duration_minutes?: number
           ends_at?: string
+          external_summary?: string | null
+          google_etag?: string | null
           google_event_id?: string | null
+          google_updated_at?: string | null
           id?: string
+          last_synced_at?: string | null
           meet_link?: string | null
           modality?: Database["public"]["Enums"]["appointment_modality"]
           notes?: string | null
-          patient_id?: string
+          patient_id?: string | null
           price?: number
           recurrence?: Database["public"]["Enums"]["recurrence_type"]
+          recurrence_end_date?: string | null
           recurrence_group_id?: string | null
           reminder_sent_at?: string | null
+          source?: string
           starts_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
