@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle } from "lucide-react";
+import { Trash2, MessageCircle, Lock } from "lucide-react";
 import { buildSessionWaUrl } from "@/lib/sessionReminder";
 
 type Props = {
@@ -21,6 +21,11 @@ type Props = {
   presetStart?: Date | null;
 };
 
+// recurrence_mode: how the user picks recurrence
+//  - none      : single appointment
+//  - count     : N occurrences
+//  - until     : until end date
+//  - infinite  : up to a hard cap (52) so we don't generate forever
 const schema = z.object({
   patient_id: z.string().uuid("Selecione um paciente"),
   date: z.string().min(1),
@@ -30,9 +35,13 @@ const schema = z.object({
   price: z.coerce.number().min(0).max(99999),
   status: z.enum(["scheduled", "done", "canceled", "no_show"]),
   recurrence: z.enum(["none", "weekly", "biweekly"]),
+  recurrence_mode: z.enum(["none", "count", "until", "infinite"]),
   occurrences: z.coerce.number().min(1).max(52),
+  recurrence_end_date: z.string().optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
 });
+
+const INFINITE_CAP = 52; // safety cap for "infinita"
 
 const toLocalDate = (d: Date) => d.toISOString().slice(0, 10);
 const toLocalTime = (d: Date) => d.toTimeString().slice(0, 5);
@@ -44,6 +53,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<string | null>(null);
   const [existingPayment, setExistingPayment] = useState<any>(null);
+  const isExternal = appointment?.source === "google";
   const [form, setForm] = useState<any>({
     patient_id: "",
     date: toLocalDate(new Date()),
@@ -53,9 +63,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     price: 0,
     status: "scheduled",
     recurrence: "none",
-    occurrences: 1,
+    recurrence_mode: "none",
+    occurrences: 4,
+    recurrence_end_date: "",
     notes: "",
-    payment_status: "pending", // pending | paid | scheduled_payment
+    payment_status: "pending",
     payment_date: toLocalDate(new Date()),
     payment_method: "pix",
   });
@@ -70,7 +82,6 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     if (appointment) {
       const s = new Date(appointment.starts_at);
       const e = new Date(appointment.ends_at);
-      // load existing payment if any
       void supabase
         .from("payments")
         .select("id, amount, paid_at, due_date, method, notes")
@@ -90,7 +101,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           }
         });
       setForm({
-        patient_id: appointment.patient?.id ?? appointment.patient_id,
+        patient_id: appointment.patient?.id ?? appointment.patient_id ?? "",
         date: toLocalDate(s),
         time: toLocalTime(s),
         duration: Math.round((+e - +s) / 60000),
@@ -98,7 +109,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         price: Number(appointment.price ?? 0),
         status: appointment.status ?? "scheduled",
         recurrence: appointment.recurrence ?? "none",
+        recurrence_mode: appointment.recurrence && appointment.recurrence !== "none" ? "count" : "none",
         occurrences: 1,
+        recurrence_end_date: appointment.recurrence_end_date ?? "",
         notes: appointment.notes ?? "",
         payment_status: "pending",
         payment_date: toLocalDate(s),
@@ -117,7 +130,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         price: 0,
         status: "scheduled",
         recurrence: "none",
-        occurrences: 1,
+        recurrence_mode: "none",
+        occurrences: 4,
+        recurrence_end_date: "",
         notes: "",
         payment_status: "pending",
         payment_date: toLocalDate(s),
@@ -132,6 +147,15 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const onPatientChange = (id: string) => {
     const p = patients.find((x) => x.id === id);
     setForm((f: any) => ({ ...f, patient_id: id, price: p?.default_session_price ?? f.price }));
+  };
+
+  const onRecurrenceModeChange = (mode: string) => {
+    setForm((f: any) => {
+      const next: any = { ...f, recurrence_mode: mode };
+      if (mode === "none") next.recurrence = "none";
+      else if (f.recurrence === "none") next.recurrence = "weekly";
+      return next;
+    });
   };
 
   const checkConflict = async (startISO: string, endISO: string) => {
@@ -156,7 +180,6 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     },
   ): Promise<{ event_id?: string; meet_link?: string | null } | null> => {
     try {
-      // Fetch patient email + clinic email for attendees
       let attendees: { email: string; displayName?: string }[] = [];
       let patientName = args.patient_name ?? "Paciente";
       if (args.patient_id) {
@@ -197,6 +220,35 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     }
   };
 
+  const buildOccurrenceDates = (start: Date, mode: string, recurrence: string, occurrences: number, endDate: string): Date[] => {
+    if (mode === "none" || recurrence === "none") return [start];
+    const stepDays = recurrence === "weekly" ? 7 : 14;
+    const dates: Date[] = [];
+    if (mode === "count") {
+      for (let i = 0; i < Math.min(occurrences, INFINITE_CAP); i++) {
+        const d = new Date(start); d.setDate(d.getDate() + i * stepDays);
+        dates.push(d);
+      }
+    } else if (mode === "until") {
+      if (!endDate) return [start];
+      const end = new Date(`${endDate}T23:59:59`);
+      let i = 0;
+      while (true) {
+        const d = new Date(start); d.setDate(d.getDate() + i * stepDays);
+        if (d > end) break;
+        dates.push(d);
+        i++;
+        if (i > INFINITE_CAP) break;
+      }
+    } else if (mode === "infinite") {
+      for (let i = 0; i < INFINITE_CAP; i++) {
+        const d = new Date(start); d.setDate(d.getDate() + i * stepDays);
+        dates.push(d);
+      }
+    }
+    return dates;
+  };
+
   const submit = async () => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
@@ -209,12 +261,13 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
 
     const conflicts = await checkConflict(start.toISOString(), end.toISOString());
     if (conflicts.length) {
-      setConflict(`Conflito com: ${conflicts[0].patient?.full_name} em ${formatDateTimeBR(conflicts[0].starts_at)}`);
+      setConflict(`Conflito com: ${conflicts[0].patient?.full_name ?? "outro evento"} em ${formatDateTimeBR(conflicts[0].starts_at)}`);
       setSaving(false);
       return;
     }
 
     if (appointment) {
+      // Editing existing system appointment (external are blocked at UI level)
       const { error } = await supabase.from("appointments").update({
         patient_id: parsed.data.patient_id,
         starts_at: start.toISOString(),
@@ -223,7 +276,6 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         modality: parsed.data.modality,
         price: parsed.data.price,
         status: parsed.data.status,
-        recurrence: parsed.data.recurrence,
         notes: parsed.data.notes || null,
       }).eq("id", appointment.id);
       if (error) {
@@ -233,37 +285,40 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
 
       await upsertPayment(appointment.id, parsed.data.price);
 
-      // Sync calendar (only for online or already-linked events)
-      if (parsed.data.modality === "online" || appointment.google_event_id) {
-        const result = await syncCalendar(
-          appointment.google_event_id ? "update" : "create",
-          appointment.id,
-          {
-            starts_at: start.toISOString(),
-            ends_at: end.toISOString(),
-            patient_id: parsed.data.patient_id,
-            google_event_id: appointment.google_event_id,
-          },
-        );
-        if (result?.event_id) {
-          await supabase.from("appointments").update({
-            google_event_id: result.event_id,
-            meet_link: result.meet_link ?? null,
-          }).eq("id", appointment.id);
-        }
+      // Always keep Google in sync (both online and presencial)
+      const result = await syncCalendar(
+        appointment.google_event_id ? "update" : "create",
+        appointment.id,
+        {
+          starts_at: start.toISOString(),
+          ends_at: end.toISOString(),
+          patient_id: parsed.data.patient_id,
+          google_event_id: appointment.google_event_id,
+        },
+      );
+      if (result?.event_id) {
+        await supabase.from("appointments").update({
+          google_event_id: result.event_id,
+          meet_link: result.meet_link ?? null,
+        }).eq("id", appointment.id);
       }
 
       setSaving(false);
       toast({ title: "Agendamento atualizado" });
     } else {
-      const groupId = parsed.data.recurrence !== "none" && parsed.data.occurrences > 1 ? crypto.randomUUID() : null;
-      const stepDays = parsed.data.recurrence === "weekly" ? 7 : parsed.data.recurrence === "biweekly" ? 14 : 0;
-      const rows: any[] = [];
-      const total = stepDays > 0 ? parsed.data.occurrences : 1;
-      for (let i = 0; i < total; i++) {
-        const s = new Date(start); s.setDate(s.getDate() + i * stepDays);
+      const dates = buildOccurrenceDates(
+        start,
+        parsed.data.recurrence_mode,
+        parsed.data.recurrence,
+        parsed.data.occurrences,
+        parsed.data.recurrence_end_date || "",
+      );
+      const groupId = dates.length > 1 ? crypto.randomUUID() : null;
+      const recurrenceEndDate = parsed.data.recurrence_mode === "until" ? (parsed.data.recurrence_end_date || null) : null;
+
+      const rows = dates.map((s) => {
         const e = new Date(s.getTime() + parsed.data.duration * 60000);
-        rows.push({
+        return {
           patient_id: parsed.data.patient_id,
           starts_at: s.toISOString(),
           ends_at: e.toISOString(),
@@ -273,18 +328,21 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           status: parsed.data.status,
           recurrence: parsed.data.recurrence,
           recurrence_group_id: groupId,
+          recurrence_end_date: recurrenceEndDate,
+          source: "system",
           notes: parsed.data.notes || null,
           created_by: user?.id,
-        });
-      }
+        };
+      });
+
       const { data: inserted, error } = await supabase.from("appointments").insert(rows).select("id, starts_at, ends_at");
       if (error) {
         setSaving(false);
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
-      // Sync each created appointment with Google Calendar (only if online)
-      if (parsed.data.modality === "online" && inserted) {
+      // Sync each created appointment with Google (presencial too — to block the slot)
+      if (inserted) {
         for (const row of inserted) {
           const result = await syncCalendar("create", row.id, {
             starts_at: row.starts_at,
@@ -300,15 +358,14 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         }
       }
 
-      // Apply payment status to each newly created appointment
-      if (inserted) {
-        for (const row of inserted) {
-          await upsertPayment(row.id, parsed.data.price);
-        }
+      // Payment: only the FIRST (current) session gets the chosen status; others stay pending
+      if (inserted && inserted.length) {
+        const sorted = [...inserted].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
+        await upsertPayment(sorted[0].id, parsed.data.price);
       }
 
       setSaving(false);
-      toast({ title: total > 1 ? `${total} agendamentos criados` : "Agendamento criado" });
+      toast({ title: dates.length > 1 ? `${dates.length} agendamentos criados` : "Agendamento criado" });
     }
     onSaved();
     onOpenChange(false);
@@ -357,6 +414,34 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     onOpenChange(false);
   };
 
+  // External event from Google: read-only view
+  if (isExternal) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-4 w-4" /> Evento do Google Calendar
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <div className="font-medium">{appointment.external_summary ?? "(Sem título)"}</div>
+            <div className="text-muted-foreground">
+              {formatDateTimeBR(appointment.starts_at)} — {new Date(appointment.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </div>
+            <p className="text-xs text-muted-foreground pt-2">
+              Este horário está bloqueado porque foi criado direto no Google Calendar.
+              Para alterar ou excluir, edite no próprio Google Calendar — o sistema sincroniza automaticamente em até 5 minutos.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -403,20 +488,48 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               </Select>
             </Field>
           </div>
+
           {!appointment && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Recorrência">
-                <Select value={form.recurrence} onValueChange={(v) => set("recurrence", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem recorrência</SelectItem>
-                    <SelectItem value="weekly">Semanal</SelectItem>
-                    <SelectItem value="biweekly">Quinzenal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              {form.recurrence !== "none" && (
-                <Field label="Quantidade"><Input type="number" min={1} max={52} value={form.occurrences} onChange={(e) => set("occurrences", e.target.value)} /></Field>
+            <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorrência</div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Tipo">
+                  <Select value={form.recurrence_mode} onValueChange={onRecurrenceModeChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem recorrência</SelectItem>
+                      <SelectItem value="count">Quantidade fixa de sessões</SelectItem>
+                      <SelectItem value="until">Até uma data final</SelectItem>
+                      <SelectItem value="infinite">Indefinida (gera 52 sessões)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                {form.recurrence_mode !== "none" && (
+                  <Field label="Frequência">
+                    <Select value={form.recurrence} onValueChange={(v) => set("recurrence", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="biweekly">Quinzenal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+              </div>
+              {form.recurrence_mode === "count" && (
+                <Field label="Quantidade de sessões">
+                  <Input type="number" min={1} max={52} value={form.occurrences} onChange={(e) => set("occurrences", e.target.value)} />
+                </Field>
+              )}
+              {form.recurrence_mode === "until" && (
+                <Field label="Data final">
+                  <Input type="date" value={form.recurrence_end_date} onChange={(e) => set("recurrence_end_date", e.target.value)} />
+                </Field>
+              )}
+              {form.recurrence_mode !== "none" && (
+                <p className="text-[11px] text-muted-foreground">
+                  O pagamento configurado abaixo se aplica apenas à 1ª sessão. As demais ficam em aberto.
+                </p>
               )}
             </div>
           )}
