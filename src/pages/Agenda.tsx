@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, MessageCircle, RefreshCw } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle, RefreshCw, Video } from "lucide-react";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { formatBRL } from "@/lib/format";
 import { buildSessionWaUrl } from "@/lib/sessionReminder";
@@ -165,6 +165,19 @@ const Agenda = () => {
                                 <MessageCircle className="h-4 w-4" />
                               </a>
                             )}
+                            {!ext && a.meet_link && (
+                              <a
+                                href={a.meet_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-primary hover:bg-primary/10"
+                                aria-label="Abrir sala do Meet"
+                                title="Abrir sala do Meet"
+                              >
+                                <Video className="h-4 w-4" />
+                              </a>
+                            )}
                             {!ext && <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>}
                             {ext && <Badge variant="outline" className="text-[10px]">Bloqueado</Badge>}
                           </div>
@@ -225,24 +238,39 @@ const Agenda = () => {
                             onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
                             className={`block w-full text-left rounded-md px-2 py-1 text-xs ${ext ? "bg-muted text-muted-foreground border border-dashed" : "bg-primary/15 hover:bg-primary/25 text-primary"}`}
                           >
-                            <div className="font-medium truncate pr-6">
+                            <div className="font-medium truncate pr-12">
                               {ext ? `🔒 ${a.external_summary ?? "Google"}` : a.patient?.full_name}
                             </div>
                             <div className="opacity-80">{hm(a.starts_at)}</div>
                           </button>
-                          {!ext && a.patient?.phone && (
-                            <a
-                              href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="absolute top-1 right-1 inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
-                              aria-label="Enviar lembrete pelo WhatsApp"
-                              title="Enviar lembrete pelo WhatsApp"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5" />
-                            </a>
-                          )}
+                          <div className="absolute top-1 right-1 flex items-center gap-0.5">
+                            {!ext && a.patient?.phone && (
+                              <a
+                                href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
+                                aria-label="Enviar lembrete pelo WhatsApp"
+                                title="Enviar lembrete pelo WhatsApp"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                            {!ext && a.meet_link && (
+                              <a
+                                href={a.meet_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex h-5 w-5 items-center justify-center rounded text-primary hover:bg-primary/10"
+                                aria-label="Abrir sala do Meet"
+                                title="Abrir sala do Meet"
+                              >
+                                <Video className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
