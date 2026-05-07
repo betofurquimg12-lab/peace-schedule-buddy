@@ -35,8 +35,9 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData?.user) return json({ error: 'Unauthorized' }, 401);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims) return json({ error: 'Unauthorized' }, 401);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const GCAL_API_KEY = Deno.env.get('GOOGLE_CALENDAR_API_KEY');
