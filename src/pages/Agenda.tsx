@@ -188,17 +188,21 @@ const Agenda = () => {
           })}
         </div>
         <div className="max-h-[70vh] overflow-y-auto">
-          {hours.map((h) => (
-            <div key={h} className="grid border-b min-h-[56px]" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
-              <div className="text-xs text-muted-foreground p-2 text-right">{String(h).padStart(2, "0")}:00</div>
+          {hours.map((h) => {
+            const nowHour = new Date().getHours();
+            const isCurrentHour = h === nowHour;
+            return (
+            <div key={h} className={`grid border-b min-h-[56px] ${isCurrentHour ? "bg-primary/10 ring-1 ring-primary/30" : ""}`} style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
+              <div className={`text-xs p-2 text-right ${isCurrentHour ? "text-primary font-bold" : "text-muted-foreground"}`}>{String(h).padStart(2, "0")}:00</div>
               {days.map((d) => {
                 const slotAppts = appts.filter((a) => {
                   const dt = new Date(a.starts_at);
                   return sameDay(dt, d) && dt.getHours() === h;
                 });
                 const isToday = sameDay(d, new Date());
+                const isNowCell = isToday && isCurrentHour;
                 return (
-                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 ${isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
+                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
                     {slotAppts.map((a) => {
                       const ext = a.source === "google";
                       return (
