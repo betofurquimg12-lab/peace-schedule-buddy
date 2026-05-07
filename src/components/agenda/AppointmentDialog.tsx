@@ -526,11 +526,21 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                   <Input type="date" value={form.recurrence_end_date} onChange={(e) => set("recurrence_end_date", e.target.value)} />
                 </Field>
               )}
-              {form.recurrence_mode !== "none" && (
-                <p className="text-[11px] text-muted-foreground">
-                  O pagamento configurado abaixo se aplica apenas à 1ª sessão. As demais ficam em aberto.
-                </p>
-              )}
+              {form.recurrence_mode !== "none" && (() => {
+                const previewStart = new Date(`${form.date}T${form.time || "09:00"}:00`);
+                const count = buildOccurrenceDates(
+                  previewStart,
+                  form.recurrence_mode,
+                  form.recurrence,
+                  Number(form.occurrences) || 1,
+                  form.recurrence_end_date || "",
+                ).length;
+                return (
+                  <div className="rounded-md bg-primary/10 text-primary px-2 py-1.5 text-xs font-medium">
+                    Serão criadas {count} sessão(ões) — pagamento aplicado apenas à 1ª; demais ficam em aberto.
+                  </div>
+                );
+              })()}
             </div>
           )}
 
