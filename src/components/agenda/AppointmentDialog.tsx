@@ -519,7 +519,10 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             </Field>
           </div>
 
-          {!appointment && (
+          {(
+            <></>
+          )}
+          {true && (
             <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorrência</div>
               <div className="grid grid-cols-2 gap-3">
