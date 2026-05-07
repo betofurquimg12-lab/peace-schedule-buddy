@@ -1,72 +1,30 @@
-# Plano: Lembretes de sessão (WhatsApp 1-clique + Google Calendar + alerta 5 min antes)
+## Objetivo
 
-Três camadas combinadas, todas grátis:
+Centralizar a conexão com o Google Calendar **apenas** na tela de Configurações. Ao editar/salvar o vínculo (informando o e-mail), o sistema deve sincronizar imediatamente e não exigir nenhuma ação na Agenda.
 
-1. **WhatsApp manual** — botão de 1 clique na agenda com mensagem pronta + link do Meet.
-2. **Google Calendar** — lembretes automáticos por e-mail para o paciente (já que o paciente é convidado do evento).
-3. **Alerta 5 min antes para você (psicóloga/secretária)** — uma notificação dentro do app que abre direto o WhatsApp com a mensagem pronta. Basta clicar "Enviar".
+## Mudanças
 
----
+### 1. `src/components/settings/GoogleCalendarSyncCard.tsx`
+- Tornar o card o único ponto de gerenciamento da integração:
+  - Mostrar status do vínculo: "Conectado a `email@x.com`" ou "Não conectado".
+  - Botão **Editar vínculo** abre o campo de e-mail (em estado inicial bloqueado quando já existe um vínculo).
+  - Validar que o e-mail é obrigatório quando "Sincronização ativada" estiver ligada.
+  - Ao clicar **Salvar vínculo**:
+    1. `upsert` em `agenda_settings` (`google_sync_enabled`, `google_sync_email`).
+    2. Em seguida, automaticamente invocar `supabase.functions.invoke("google-calendar-sync")`.
+    3. Toast: "Vínculo salvo e sincronizado".
+  - Manter botão **Sincronizar agora** para forçar sync manual sem alterar dados.
+  - Tratar erros do invoke e mostrar toast destrutivo.
 
-## Parte A — Botão de WhatsApp na Agenda
+### 2. `src/pages/Agenda.tsx`
+- Remover o botão **Sincronizar Google** do cabeçalho da Agenda (passa a viver só em Configurações).
+- Remover o `useEffect` que chama `syncGoogle()` automaticamente ao trocar de semana, mantendo apenas leitura local de `appointments` (a sync acontece em Configurações ou via cron). Manter `load()` ao trocar `refDate`.
+- Remover imports/estado não utilizados (`syncing`, `RefreshCw`, função `syncGoogle`).
 
-**Onde:** card de cada consulta (semana desktop e lista mobile) e dentro do `AppointmentDialog` ao editar.
+### 3. (Opcional) `supabase/functions/google-calendar-sync/index.ts`
+- Garantir que a função use o `google_sync_email` salvo (já deve usar). Sem mudanças se já consome a configuração.
 
-**Comportamento:**
-- Ícone do WhatsApp ao lado do nome do paciente. Só aparece se houver telefone.
-- Clique abre `wa.me/55XXXXX` em nova aba com mensagem pré-preenchida:
-  > Oi, {nome}! Passando para lembrar da sua sessão hoje às {hora}. Link da sala: {meet_link}. Qualquer coisa me avisa.
-- Se for presencial (sem `meet_link`), a frase do link é omitida.
-- Reaproveita `buildWaUrl` em `src/lib/format.ts`.
+## Resultado
 
-**Arquivos:**
-- `src/pages/Agenda.tsx` — incluir `phone`, `meet_link` no select e botão nos cards.
-- `src/components/agenda/AppointmentDialog.tsx` — botão "Enviar lembrete pelo WhatsApp" no rodapé ao editar.
-
----
-
-## Parte B — Alerta automático 5 min antes (dentro do app)
-
-Como o WhatsApp não pode ser enviado de forma 100% automática sem custo, a solução é: o app monitora a agenda e **5 minutos antes** de cada sessão mostra um pop-up/toast com o botão "Enviar WhatsApp agora" já carregado com a mensagem e o link do Meet.
-
-**Como funciona (tudo no front, sem custo):**
-- Hook global `useUpcomingSessionAlerts` rodando no `AppLayout` enquanto o usuário estiver logado.
-- A cada 60 segundos, busca consultas das próximas 10 minutos.
-- Quando uma consulta entra na janela de 5 min antes do início e ainda não foi alertada, abre um **toast persistente** (sonner) com:
-  - Nome do paciente, horário, link do Meet.
-  - Botão **"Abrir WhatsApp"** (mesma URL `wa.me` da Parte A).
-  - Botão **"Dispensar"**.
-- Para evitar repetir o alerta após dispensar/recarregar, marca como visto em `localStorage` (chave por `appointment_id`).
-- Adicional: solicita permissão de notificação do navegador uma vez; se concedida, dispara também uma `Notification` nativa do sistema operacional — útil quando a aba está em background.
-
-**Limitação honesta a comunicar ao usuário:** o alerta só dispara se o app estiver aberto numa aba do navegador (mesmo em background). Se o navegador estiver fechado, não toca. Por isso o Google Calendar (Parte C) entra como reforço.
-
-**Arquivos novos:**
-- `src/hooks/useUpcomingSessionAlerts.ts`
-- `src/components/agenda/SessionAlertToast.tsx` (conteúdo do toast com os botões)
-
-**Arquivo editado:**
-- `src/components/AppLayout.tsx` — montar o hook quando autenticado.
-
----
-
-## Parte C — Lembrete automático do Google Calendar para o paciente
-
-A função `google-calendar-event` já cria evento com Meet e envia convite (`sendUpdates=all`). Hoje configura só 1 popup de 10 min. Vou ajustar `reminders.overrides` para:
-
-- E-mail 1 dia antes (1440 min)
-- E-mail 10 min antes
-- Popup 5 min antes
-
-Esses lembretes vão para o paciente **se ele tiver e-mail cadastrado** no agendamento. No `AppointmentDialog`, mostrar aviso discreto quando o paciente não tiver e-mail.
-
-**Arquivo:**
-- `supabase/functions/google-calendar-event/index.ts` — atualizar `reminders.overrides`.
-
----
-
-## O que NÃO entra agora
-
-- Envio automático de WhatsApp pelo servidor (precisaria Twilio pago — adiável).
-- Templates editáveis em Configurações (próxima iteração).
-- Job server-side (cron + edge function) para o alerta — desnecessário porque o disparo precisa de ação humana de qualquer jeito; rodar no cliente é suficiente e mais simples.
+- A Agenda fica enxuta, sem botão de sincronização.
+- Toda configuração/edição do Google Calendar acontece em **Configurações → Google Calendar**: ativar/desativar, informar e-mail, salvar (que dispara a sincronização imediata) e botão de sincronizar manualmente.
