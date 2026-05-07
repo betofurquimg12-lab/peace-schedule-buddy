@@ -73,22 +73,6 @@ const Agenda = () => {
   };
   useEffect(() => { void load(); }, [refDate]);
 
-  const [syncing, setSyncing] = useState(false);
-  const syncGoogle = async () => {
-    setSyncing(true);
-    try {
-      await supabase.functions.invoke("google-calendar-sync", { body: {} });
-      await load();
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // On-demand pull from Google Calendar every time the page opens or week changes.
-  useEffect(() => {
-    void syncGoogle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refDate]);
 
   const move = (delta: number) => {
     const d = new Date(refDate); d.setDate(d.getDate() + delta * 7); setRefDate(d);
