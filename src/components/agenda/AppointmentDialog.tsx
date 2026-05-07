@@ -619,9 +619,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           {conflict && <div className="text-sm text-destructive">{conflict}</div>}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="gap-1 sm:gap-1 flex-row flex-wrap items-center">
           {appointment && (
-            <Button variant="ghost" onClick={remove} className="text-destructive hover:text-destructive mr-auto">
+            <Button variant="ghost" size="icon" onClick={remove} className="text-destructive hover:text-destructive mr-auto h-8 w-8" title="Excluir">
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
@@ -629,15 +629,21 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             <Button
               type="button"
               variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title="Sala do Meet"
               onClick={() => window.open(appointment.meet_link, "_blank", "noopener,noreferrer")}
             >
-              <Video className="h-4 w-4" /> Sala do Meet
+              <Video className="h-4 w-4" />
             </Button>
           )}
           {appointment?.patient?.phone && (
             <Button
               type="button"
               variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              title="WhatsApp"
               onClick={() => {
                 const url = buildSessionWaUrl({
                   phone: appointment.patient.phone,
@@ -648,11 +654,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 window.open(url, "_blank", "noopener,noreferrer");
               }}
             >
-              <MessageCircle className="h-4 w-4" /> WhatsApp
+              <MessageCircle className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button size="sm" onClick={submit} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
