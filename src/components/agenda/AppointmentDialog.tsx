@@ -266,8 +266,15 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       return;
     }
 
-    if (appointment) {
-      // Editing existing system appointment (external are blocked at UI level)
+    const recurrenceChanged =
+      appointment &&
+      (parsed.data.recurrence_mode !== (appointment.recurrence && appointment.recurrence !== "none" ? "count" : "none") ||
+       parsed.data.recurrence !== (appointment.recurrence ?? "none") ||
+       (parsed.data.recurrence_mode !== "none" &&
+        (parsed.data.occurrences !== 1 || parsed.data.recurrence_end_date !== (appointment.recurrence_end_date ?? ""))));
+
+    if (appointment && !recurrenceChanged) {
+      // Editing only this single appointment
       const { error } = await supabase.from("appointments").update({
         patient_id: parsed.data.patient_id,
         starts_at: start.toISOString(),
@@ -285,7 +292,6 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
 
       await upsertPayment(appointment.id, parsed.data.price);
 
-      // Always keep Google in sync (both online and presencial)
       const result = await syncCalendar(
         appointment.google_event_id ? "update" : "create",
         appointment.id,
@@ -306,13 +312,38 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       setSaving(false);
       toast({ title: "Agendamento atualizado" });
     } else {
+      // Either creating new OR editing with recurrence change → regenerate series from this date
       const dates = buildOccurrenceDates(
         start,
         parsed.data.recurrence_mode,
         parsed.data.recurrence,
-        parsed.data.occurrences,
+        Number(parsed.data.occurrences) || 1,
         parsed.data.recurrence_end_date || "",
       );
+      console.log("[AppointmentDialog] generating dates", { count: dates.length, mode: parsed.data.recurrence_mode, recurrence: parsed.data.recurrence, occurrences: parsed.data.occurrences, endDate: parsed.data.recurrence_end_date, dates: dates.map((d) => d.toISOString()) });
+
+      // If editing with recurrence change: delete this + future siblings in the group, then recreate
+      if (appointment && recurrenceChanged) {
+        const groupId = appointment.recurrence_group_id;
+        let toDelete: any[] = [];
+        if (groupId) {
+          const { data } = await supabase
+            .from("appointments")
+            .select("id, google_event_id")
+            .eq("recurrence_group_id", groupId)
+            .gte("starts_at", appointment.starts_at);
+          toDelete = data ?? [];
+        } else {
+          toDelete = [{ id: appointment.id, google_event_id: appointment.google_event_id }];
+        }
+        for (const a of toDelete) {
+          if (a.google_event_id) {
+            await syncCalendar("delete", a.id, { google_event_id: a.google_event_id });
+          }
+        }
+        await supabase.from("appointments").delete().in("id", toDelete.map((a) => a.id));
+      }
+
       const groupId = dates.length > 1 ? crypto.randomUUID() : null;
       const recurrenceEndDate = parsed.data.recurrence_mode === "until" ? (parsed.data.recurrence_end_date || null) : null;
 
@@ -336,12 +367,12 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       });
 
       const { data: inserted, error } = await supabase.from("appointments").insert(rows).select("id, starts_at, ends_at");
+      console.log("[AppointmentDialog] insert result", { requested: rows.length, inserted: inserted?.length, error });
       if (error) {
         setSaving(false);
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
-      // Sync each created appointment with Google (presencial too — to block the slot)
       if (inserted) {
         for (const row of inserted) {
           const result = await syncCalendar("create", row.id, {
@@ -358,7 +389,6 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         }
       }
 
-      // Payment: only the FIRST (current) session gets the chosen status; others stay pending
       if (inserted && inserted.length) {
         const sorted = [...inserted].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
         await upsertPayment(sorted[0].id, parsed.data.price);
