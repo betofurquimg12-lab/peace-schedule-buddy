@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, MessageCircle, RefreshCw, Video } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video } from "lucide-react";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { formatBRL } from "@/lib/format";
 import { buildSessionWaUrl } from "@/lib/sessionReminder";
