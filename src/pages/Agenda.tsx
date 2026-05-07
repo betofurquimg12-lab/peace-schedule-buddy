@@ -194,7 +194,8 @@ const Agenda = () => {
 
       {/* Desktop: week grid */}
       <Card className="hidden md:block overflow-hidden">
-        <div className="grid border-b text-xs" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
+        <div className="max-h-[70vh] overflow-y-scroll">
+        <div className="grid border-b text-xs sticky top-0 bg-card z-10" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
           <div />
           {days.map((d) => {
             const isToday = sameDay(d, new Date());
