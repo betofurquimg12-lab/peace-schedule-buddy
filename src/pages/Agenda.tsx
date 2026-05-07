@@ -116,6 +116,9 @@ const Agenda = () => {
           <Button variant="outline" size="icon" onClick={() => move(-1)}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" onClick={() => move(1)}><ChevronRight className="h-4 w-4" /></Button>
           <Button variant="ghost" size="sm" onClick={() => setRefDate(startOfWeek(new Date()))}>Hoje</Button>
+          <Button variant="outline" size="sm" onClick={syncGoogle} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sincronizar Google
+          </Button>
         </div>
         <div className="text-sm font-medium">{fmtRange}</div>
       </div>
