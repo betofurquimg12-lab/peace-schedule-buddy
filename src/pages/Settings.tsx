@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Mail } from "lucide-react";
 import { AgendaSettingsCard } from "@/components/settings/AgendaSettingsCard";
+import { GoogleCalendarSyncCard } from "@/components/settings/GoogleCalendarSyncCard";
 
 const Settings = () => {
   const { role, user } = useAuth();
@@ -116,12 +117,8 @@ const Settings = () => {
 
           <AgendaSettingsCard />
 
-          <Card className="p-5">
-            <h2 className="text-lg mb-1">Google Calendar</h2>
-            <p className="text-sm text-muted-foreground">
-              Sincronização bidirecional disponível em breve. Vamos conectar sua conta Google e configurar credenciais OAuth juntos.
-            </p>
-          </Card>
+          <GoogleCalendarSyncCard />
+
 
           <Card className="p-5">
             <h2 className="text-lg mb-1">E-mail (lembretes automáticos)</h2>

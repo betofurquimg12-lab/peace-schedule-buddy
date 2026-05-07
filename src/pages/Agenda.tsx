@@ -206,8 +206,8 @@ const Agenda = () => {
             const nowHour = new Date().getHours();
             const isCurrentHour = h === nowHour;
             return (
-            <div key={h} className={`grid border-b min-h-[56px] ${isCurrentHour ? "bg-primary/10 ring-1 ring-primary/30" : ""}`} style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
-              <div className={`text-xs p-2 text-right ${isCurrentHour ? "text-primary font-bold" : "text-muted-foreground"}`}>{String(h).padStart(2, "0")}:00</div>
+            <div key={h} className={`grid border-b min-h-[56px] ${isCurrentHour ? "bg-primary/5" : ""}`} style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
+              <div className={`text-xs p-2 text-right ${isCurrentHour ? "text-primary font-semibold" : "text-muted-foreground"}`}>{String(h).padStart(2, "0")}:00</div>
               {days.map((d) => {
                 const slotAppts = appts.filter((a) => {
                   const dt = new Date(a.starts_at);

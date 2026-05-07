@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock } from "lucide-react";
+import { Trash2, MessageCircle, Lock, Video } from "lucide-react";
 import { buildSessionWaUrl } from "@/lib/sessionReminder";
 
 type Props = {
@@ -623,6 +623,15 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           {appointment && (
             <Button variant="ghost" onClick={remove} className="text-destructive hover:text-destructive mr-auto">
               <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          {appointment?.meet_link && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => window.open(appointment.meet_link, "_blank", "noopener,noreferrer")}
+            >
+              <Video className="h-4 w-4" /> Sala do Meet
             </Button>
           )}
           {appointment?.patient?.phone && (
