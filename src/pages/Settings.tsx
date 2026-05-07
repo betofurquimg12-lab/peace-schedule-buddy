@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Mail } from "lucide-react";
 import { AgendaSettingsCard } from "@/components/settings/AgendaSettingsCard";
+import { GoogleCalendarSyncCard } from "@/components/settings/GoogleCalendarSyncCard";
 
 const Settings = () => {
   const { role, user } = useAuth();
