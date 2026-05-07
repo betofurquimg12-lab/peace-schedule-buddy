@@ -236,7 +236,8 @@ const Agenda = () => {
                 );
               })}
             </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
 
