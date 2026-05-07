@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, MessageCircle, RefreshCw, Video } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video } from "lucide-react";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { formatBRL } from "@/lib/format";
 import { buildSessionWaUrl } from "@/lib/sessionReminder";
@@ -73,22 +73,6 @@ const Agenda = () => {
   };
   useEffect(() => { void load(); }, [refDate]);
 
-  const [syncing, setSyncing] = useState(false);
-  const syncGoogle = async () => {
-    setSyncing(true);
-    try {
-      await supabase.functions.invoke("google-calendar-sync", { body: {} });
-      await load();
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // On-demand pull from Google Calendar every time the page opens or week changes.
-  useEffect(() => {
-    void syncGoogle();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refDate]);
 
   const move = (delta: number) => {
     const d = new Date(refDate); d.setDate(d.getDate() + delta * 7); setRefDate(d);
@@ -116,9 +100,6 @@ const Agenda = () => {
           <Button variant="outline" size="icon" onClick={() => move(-1)}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" onClick={() => move(1)}><ChevronRight className="h-4 w-4" /></Button>
           <Button variant="ghost" size="sm" onClick={() => setRefDate(startOfWeek(new Date()))}>Hoje</Button>
-          <Button variant="outline" size="sm" onClick={syncGoogle} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sincronizar Google
-          </Button>
         </div>
         <div className="text-sm font-medium">{fmtRange}</div>
       </div>
