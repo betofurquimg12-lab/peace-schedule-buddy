@@ -36,7 +36,7 @@ const schema = z.object({
   status: z.enum(["scheduled", "done", "canceled", "no_show"]),
   recurrence: z.enum(["none", "weekly", "biweekly"]),
   recurrence_mode: z.enum(["none", "count", "until", "infinite"]),
-  occurrences: z.coerce.number().min(1).max(52),
+  occurrences: z.coerce.number().int().min(1).max(52),
   recurrence_end_date: z.string().optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
 });
