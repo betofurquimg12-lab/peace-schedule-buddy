@@ -65,7 +65,7 @@ const Agenda = () => {
     const end = new Date(refDate); end.setDate(end.getDate() + 7);
     const { data } = await supabase
       .from("appointments")
-      .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, patient:patients(id, full_name, phone)")
+      .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, recurrence, recurrence_group_id, recurrence_end_date, patient:patients(id, full_name, phone)")
       .gte("starts_at", start.toISOString())
       .lt("starts_at", end.toISOString())
       .order("starts_at");
@@ -73,11 +73,22 @@ const Agenda = () => {
   };
   useEffect(() => { void load(); }, [refDate]);
 
-  // On-demand pull from Google Calendar every time the page opens.
+  const [syncing, setSyncing] = useState(false);
+  const syncGoogle = async () => {
+    setSyncing(true);
+    try {
+      await supabase.functions.invoke("google-calendar-sync", { body: {} });
+      await load();
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // On-demand pull from Google Calendar every time the page opens or week changes.
   useEffect(() => {
-    void supabase.functions.invoke("google-calendar-sync", { body: {} }).then(() => load());
+    void syncGoogle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refDate]);
 
   const move = (delta: number) => {
     const d = new Date(refDate); d.setDate(d.getDate() + delta * 7); setRefDate(d);
