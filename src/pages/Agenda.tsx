@@ -165,6 +165,19 @@ const Agenda = () => {
                                 <MessageCircle className="h-4 w-4" />
                               </a>
                             )}
+                            {!ext && a.meet_link && (
+                              <a
+                                href={a.meet_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-primary hover:bg-primary/10"
+                                aria-label="Abrir sala do Meet"
+                                title="Abrir sala do Meet"
+                              >
+                                <Video className="h-4 w-4" />
+                              </a>
+                            )}
                             {!ext && <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>}
                             {ext && <Badge variant="outline" className="text-[10px]">Bloqueado</Badge>}
                           </div>
