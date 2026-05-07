@@ -194,7 +194,8 @@ const Agenda = () => {
 
       {/* Desktop: week grid */}
       <Card className="hidden md:block overflow-hidden">
-        <div className="grid border-b text-xs" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
+        <div className="max-h-[70vh] overflow-y-scroll">
+        <div className="grid border-b text-xs sticky top-0 bg-card z-10" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
           <div />
           {days.map((d) => {
             const isToday = sameDay(d, new Date());
@@ -214,8 +215,7 @@ const Agenda = () => {
             );
           })}
         </div>
-        <div className="max-h-[70vh] overflow-y-auto">
-          {hours.map((h) => {
+        {hours.map((h) => {
             const nowHour = new Date().getHours();
             const isCurrentHour = h === nowHour;
             return (
@@ -229,16 +229,16 @@ const Agenda = () => {
                 const isToday = sameDay(d, new Date());
                 const isNowCell = isToday && isCurrentHour;
                 return (
-                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
+                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 min-w-0 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
                     {slotAppts.map((a) => {
                       const ext = a.source === "google";
                       return (
                         <div key={a.id} className="relative mb-1">
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
-                            className={`block w-full text-left rounded-md px-2 py-1 text-xs ${ext ? "bg-muted text-muted-foreground border border-dashed" : "bg-primary/15 hover:bg-primary/25 text-primary"}`}
+                            className={`block w-full text-left rounded-md px-2 py-1 pr-14 text-xs ${ext ? "bg-muted text-muted-foreground border border-dashed" : "bg-primary/15 hover:bg-primary/25 text-primary"}`}
                           >
-                            <div className="font-medium truncate pr-12">
+                            <div className="font-medium truncate">
                               {ext ? `🔒 ${a.external_summary ?? "Google"}` : a.patient?.full_name}
                             </div>
                             <div className="opacity-80">{hm(a.starts_at)}</div>
