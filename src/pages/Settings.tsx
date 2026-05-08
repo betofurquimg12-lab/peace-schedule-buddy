@@ -118,6 +118,8 @@ const Settings = () => {
 
           <AgendaSettingsCard />
 
+          <MessageTemplatesCard />
+
           <GoogleCalendarSyncCard />
 
 
