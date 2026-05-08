@@ -250,17 +250,26 @@ const Agenda = () => {
                           </button>
                           <div className="absolute top-1 right-1 flex items-center gap-0.5">
                             {!ext && a.patient?.phone && (
-                              <a
-                                href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
-                                aria-label="Enviar lembrete pelo WhatsApp"
-                                title="Enviar lembrete pelo WhatsApp"
-                              >
-                                <MessageCircle className="h-3.5 w-3.5" />
-                              </a>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "reminder"); }}
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
+                                  aria-label="Enviar lembrete pelo WhatsApp"
+                                  title="Enviar lembrete pelo WhatsApp"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded text-amber-600 hover:bg-amber-50"
+                                  aria-label="Cobrar pelo WhatsApp"
+                                  title="Cobrar pelo WhatsApp"
+                                >
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                </button>
+                              </>
                             )}
                             {!ext && a.meet_link && (
                               <a
