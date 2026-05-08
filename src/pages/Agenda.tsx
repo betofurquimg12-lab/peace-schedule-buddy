@@ -3,11 +3,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign } from "lucide-react";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { formatBRL } from "@/lib/format";
-import { buildSessionWaUrl } from "@/lib/sessionReminder";
+import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 import { Badge } from "@/components/ui/badge";
+
+const openWaForAppointment = async (a: any, kind: "reminder" | "charge") => {
+  const opts = {
+    phone: a.patient?.phone,
+    patientName: a.patient?.full_name ?? "",
+    startsAt: a.starts_at,
+    meetLink: a.meet_link,
+    price: Number(a.price ?? 0),
+  };
+  const url =
+    kind === "charge"
+      ? await buildChargeWaUrlAsync(opts)
+      : await buildSessionWaUrlAsync(opts);
+  window.open(url, "_blank", "noopener,noreferrer");
+};
 
 const startOfWeek = (d: Date) => {
   const x = new Date(d);
