@@ -3,11 +3,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign } from "lucide-react";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { formatBRL } from "@/lib/format";
-import { buildSessionWaUrl } from "@/lib/sessionReminder";
+import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 import { Badge } from "@/components/ui/badge";
+
+const openWaForAppointment = async (a: any, kind: "reminder" | "charge") => {
+  const opts = {
+    phone: a.patient?.phone,
+    patientName: a.patient?.full_name ?? "",
+    startsAt: a.starts_at,
+    meetLink: a.meet_link,
+    price: Number(a.price ?? 0),
+  };
+  const url =
+    kind === "charge"
+      ? await buildChargeWaUrlAsync(opts)
+      : await buildSessionWaUrlAsync(opts);
+  window.open(url, "_blank", "noopener,noreferrer");
+};
 
 const startOfWeek = (d: Date) => {
   const x = new Date(d);
@@ -134,17 +149,26 @@ const Agenda = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             {!ext && a.patient?.phone && (
-                              <a
-                                href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
-                                aria-label="Enviar lembrete pelo WhatsApp"
-                                title="Enviar lembrete pelo WhatsApp"
-                              >
-                                <MessageCircle className="h-4 w-4" />
-                              </a>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "reminder"); }}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
+                                  aria-label="Enviar lembrete pelo WhatsApp"
+                                  title="Enviar lembrete pelo WhatsApp"
+                                >
+                                  <MessageCircle className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
+                                  aria-label="Cobrar pelo WhatsApp"
+                                  title="Cobrar pelo WhatsApp"
+                                >
+                                  <DollarSign className="h-4 w-4" />
+                                </button>
+                              </>
                             )}
                             {!ext && a.meet_link && (
                               <a
@@ -226,17 +250,26 @@ const Agenda = () => {
                           </button>
                           <div className="absolute top-1 right-1 flex items-center gap-0.5">
                             {!ext && a.patient?.phone && (
-                              <a
-                                href={buildSessionWaUrl({ phone: a.patient.phone, patientName: a.patient.full_name, startsAt: a.starts_at, meetLink: a.meet_link })}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
-                                aria-label="Enviar lembrete pelo WhatsApp"
-                                title="Enviar lembrete pelo WhatsApp"
-                              >
-                                <MessageCircle className="h-3.5 w-3.5" />
-                              </a>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "reminder"); }}
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
+                                  aria-label="Enviar lembrete pelo WhatsApp"
+                                  title="Enviar lembrete pelo WhatsApp"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded text-amber-600 hover:bg-amber-50"
+                                  aria-label="Cobrar pelo WhatsApp"
+                                  title="Cobrar pelo WhatsApp"
+                                >
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                </button>
+                              </>
                             )}
                             {!ext && a.meet_link && (
                               <a

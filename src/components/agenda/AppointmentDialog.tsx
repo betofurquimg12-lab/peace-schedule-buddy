@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock, Video } from "lucide-react";
-import { buildSessionWaUrl } from "@/lib/sessionReminder";
+import { Trash2, MessageCircle, Lock, Video, DollarSign } from "lucide-react";
+import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
 type Props = {
   open: boolean;
@@ -638,24 +638,46 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             </Button>
           )}
           {appointment?.patient?.phone && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              title="WhatsApp"
-              onClick={() => {
-                const url = buildSessionWaUrl({
-                  phone: appointment.patient.phone,
-                  patientName: appointment.patient.full_name,
-                  startsAt: appointment.starts_at,
-                  meetLink: appointment.meet_link,
-                });
-                window.open(url, "_blank", "noopener,noreferrer");
-              }}
-            >
-              <MessageCircle className="h-4 w-4" />
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                title="WhatsApp"
+                onClick={async () => {
+                  const url = await buildSessionWaUrlAsync({
+                    phone: appointment.patient.phone,
+                    patientName: appointment.patient.full_name,
+                    startsAt: appointment.starts_at,
+                    meetLink: appointment.meet_link,
+                    price: Number(appointment.price ?? 0),
+                  });
+                  window.open(url, "_blank", "noopener,noreferrer");
+                }}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                title="Cobrar pelo WhatsApp"
+                onClick={async () => {
+                  const url = await buildChargeWaUrlAsync({
+                    phone: appointment.patient.phone,
+                    patientName: appointment.patient.full_name,
+                    startsAt: appointment.starts_at,
+                    meetLink: appointment.meet_link,
+                    price: Number(appointment.price ?? 0),
+                  });
+                  window.open(url, "_blank", "noopener,noreferrer");
+                }}
+              >
+                <DollarSign className="h-4 w-4" />
+              </Button>
+            </>
           )}
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button size="sm" onClick={submit} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
