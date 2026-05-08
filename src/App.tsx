@@ -14,6 +14,7 @@ import Agenda from "./pages/Agenda";
 import Financeiro from "./pages/Financeiro";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/agenda" element={<Agenda />} />
