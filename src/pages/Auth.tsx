@@ -103,17 +103,6 @@ const Auth = () => {
           </form>
         </Tabs>
 
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">ou</span>
-          </div>
-        </div>
-
-        <Button variant="outline" className="w-full" onClick={handleGoogle}>
-          Continuar com Google
-        </Button>
-
         <p className="text-xs text-muted-foreground text-center mt-6">
           Ao entrar você concorda com o uso responsável dos dados clínicos dos pacientes.
         </p>
