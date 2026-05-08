@@ -14,6 +14,7 @@ import Agenda from "./pages/Agenda";
 import Financeiro from "./pages/Financeiro";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
