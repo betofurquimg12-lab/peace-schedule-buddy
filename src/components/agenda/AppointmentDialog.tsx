@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock, Video } from "lucide-react";
-import { buildSessionWaUrl } from "@/lib/sessionReminder";
+import { Trash2, MessageCircle, Lock, Video, DollarSign } from "lucide-react";
+import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
 type Props = {
   open: boolean;
