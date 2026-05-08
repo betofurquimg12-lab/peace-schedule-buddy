@@ -240,6 +240,36 @@ export type Database = {
         }
         Relationships: []
       }
+      message_templates: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          key: string
+          owner_id: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          key: string
+          owner_id: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          key?: string
+          owner_id?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       patients: {
         Row: {
           active: boolean
