@@ -28,6 +28,16 @@ Deno.serve(async (req) => {
     }
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Respect the global on/off toggle from agenda_settings
+    const { data: syncSettings } = await supabase
+      .from('agenda_settings')
+      .select('google_sync_enabled')
+      .limit(1)
+      .maybeSingle();
+    if (syncSettings && syncSettings.google_sync_enabled === false) {
+      return json({ ok: true, skipped: true, reason: 'sync disabled' });
+    }
+
     const now = new Date();
     const future = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
     const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

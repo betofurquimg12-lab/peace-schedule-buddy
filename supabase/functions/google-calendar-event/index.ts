@@ -49,6 +49,16 @@ Deno.serve(async (req) => {
       return json({ error: 'Missing action or appointment_id' }, 400);
     }
 
+    // Check if Google Calendar sync is enabled in agenda_settings
+    const { data: syncSettings } = await supabase
+      .from('agenda_settings')
+      .select('google_sync_enabled')
+      .limit(1)
+      .maybeSingle();
+    if (syncSettings && syncSettings.google_sync_enabled === false) {
+      return json({ ok: true, skipped: true, event_id: null, meet_link: null, html_link: null });
+    }
+
     const headers = {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
       'X-Connection-Api-Key': GCAL_API_KEY,

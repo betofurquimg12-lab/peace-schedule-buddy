@@ -13,7 +13,7 @@ export const GoogleCalendarSyncCard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [enabled, setEnabled] = useState(true);
-  const [connectedEmail, setConnectedEmail] = useState<string>(CONNECTED_ACCOUNT_FALLBACK);
+  const connectedEmail = CONNECTED_ACCOUNT_FALLBACK;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -23,13 +23,11 @@ export const GoogleCalendarSyncCard = () => {
       if (!user) return;
       const { data } = await supabase
         .from("agenda_settings")
-        .select("google_sync_enabled, google_sync_email")
+        .select("google_sync_enabled")
         .eq("owner_id", user.id)
         .maybeSingle();
       if (data) {
         setEnabled((data as any).google_sync_enabled ?? true);
-        const e = (data as any).google_sync_email;
-        if (e) setConnectedEmail(e);
       }
       setLoading(false);
     })();
