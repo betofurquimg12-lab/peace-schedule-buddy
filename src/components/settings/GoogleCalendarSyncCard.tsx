@@ -3,19 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+
+const CONNECTED_ACCOUNT_FALLBACK = "gessicafurquim@gmail.com";
 
 export const GoogleCalendarSyncCard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [enabled, setEnabled] = useState(true);
-  const [email, setEmail] = useState("");
-  const [savedEmail, setSavedEmail] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [connectedEmail, setConnectedEmail] = useState<string>(CONNECTED_ACCOUNT_FALLBACK);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -30,13 +28,8 @@ export const GoogleCalendarSyncCard = () => {
         .maybeSingle();
       if (data) {
         setEnabled((data as any).google_sync_enabled ?? true);
-        const e = (data as any).google_sync_email ?? "";
-        setEmail(e || user.email || "");
-        setSavedEmail(e || null);
-        setEditing(!e);
-      } else {
-        setEmail(user.email ?? "");
-        setEditing(true);
+        const e = (data as any).google_sync_email;
+        if (e) setConnectedEmail(e);
       }
       setLoading(false);
     })();
@@ -55,87 +48,60 @@ export const GoogleCalendarSyncCard = () => {
     }
   };
 
-  const save = async () => {
+  const toggleEnabled = async (value: boolean) => {
     if (!user) return;
-    if (enabled && !email) {
-      return toast({ title: "Informe o e-mail do Google", variant: "destructive" });
-    }
+    setEnabled(value);
     setSaving(true);
     const { error } = await supabase.from("agenda_settings").upsert(
-      { owner_id: user.id, google_sync_enabled: enabled, google_sync_email: email || null },
+      { owner_id: user.id, google_sync_enabled: value },
       { onConflict: "owner_id" },
     );
     setSaving(false);
-    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    setSavedEmail(email || null);
-    setEditing(false);
-    toast({ title: "Vínculo salvo", description: "Sincronizando com o Google Calendar..." });
-    if (enabled) await syncNow();
+    if (error) {
+      setEnabled(!value);
+      return toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    }
+    toast({ title: value ? "Sincronização ativada" : "Sincronização desativada" });
   };
 
   if (loading) return null;
-
-  const isConnected = !!savedEmail && enabled;
 
   return (
     <Card className="p-5">
       <h2 className="text-lg mb-1">Google Calendar</h2>
       <p className="text-sm text-muted-foreground mb-4">
-        Centralize aqui o vínculo com o Google Calendar. Eventos do Google aparecem na agenda
-        bloqueando horários, e agendamentos criados aqui são publicados lá.
+        Eventos do Google aparecem na agenda bloqueando horários, e agendamentos criados aqui são
+        publicados lá com link do Meet.
       </p>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between rounded-lg border p-3">
-          <div>
-            <div className="text-sm font-medium">
-              {isConnected ? `Conectado a ${savedEmail}` : "Não conectado"}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {isConnected
-                ? "A sincronização ocorre automaticamente."
-                : "Informe o e-mail do Google e salve para vincular."}
+          <div className="flex items-start gap-3">
+            {enabled ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
+            )}
+            <div>
+              <div className="text-sm font-medium">Conta conectada: {connectedEmail}</div>
+              <div className="text-xs text-muted-foreground">
+                {enabled ? "Sincronização ativa." : "Sincronização desativada."}
+              </div>
             </div>
           </div>
-          <Switch checked={enabled} onCheckedChange={(v) => { setEnabled(v); if (v && !savedEmail) setEditing(true); }} />
+          <Switch checked={enabled} disabled={saving} onCheckedChange={toggleEnabled} />
         </div>
 
-        {(editing || !savedEmail) && (
-          <div>
-            <Label htmlFor="gcal-email">E-mail do Google</Label>
-            <Input
-              id="gcal-email"
-              type="email"
-              placeholder="seuemail@gmail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={!enabled}
-            />
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Os eventos serão lidos/criados na agenda principal (primary) desta conta.
-            </p>
-          </div>
-        )}
+        <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+          A conta Google usada para criar eventos e links do Meet é definida no nível do app. Para
+          trocá-la, é necessário desconectar e reconectar a integração do Google Calendar nas
+          configurações de conectores do projeto (ou solicitar a troca ao responsável técnico).
+        </div>
 
         <div className="flex flex-wrap gap-2">
-          {editing ? (
-            <>
-              <Button onClick={save} disabled={saving}>
-                {saving ? "Salvando..." : "Salvar vínculo"}
-              </Button>
-              {savedEmail && (
-                <Button type="button" variant="ghost" onClick={() => { setEmail(savedEmail); setEditing(false); }}>
-                  Cancelar
-                </Button>
-              )}
-            </>
-          ) : (
-            <Button type="button" variant="outline" onClick={() => setEditing(true)}>
-              Editar vínculo
-            </Button>
-          )}
-          <Button type="button" variant="outline" onClick={syncNow} disabled={syncing || !enabled || !savedEmail}>
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sincronizar agora
+          <Button type="button" variant="outline" onClick={syncNow} disabled={syncing || !enabled}>
+            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+            Sincronizar agora
           </Button>
         </div>
       </div>
