@@ -87,10 +87,23 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Skip events without a real time block (all-day or malformed)
-      const startISO = ev.start?.dateTime;
-      const endISO = ev.end?.dateTime;
+      // Determine start/end. Support all-day events (start.date) and timed (start.dateTime).
+      let startISO: string | undefined = ev.start?.dateTime;
+      let endISO: string | undefined = ev.end?.dateTime;
+      let isAllDay = false;
+      if ((!startISO || !endISO) && ev.start?.date && ev.end?.date) {
+        isAllDay = true;
+        // Google all-day end.date is exclusive (next day). Use 23:59:59 of (end - 1 day) for display.
+        const startDate = ev.start.date as string;
+        const endDateExclusive = new Date(ev.end.date as string);
+        endDateExclusive.setUTCDate(endDateExclusive.getUTCDate() - 1);
+        const endDate = endDateExclusive.toISOString().slice(0, 10);
+        startISO = `${startDate}T00:00:00-03:00`;
+        endISO = `${endDate}T23:59:59-03:00`;
+      }
       if (!startISO || !endISO) {
+        console.log('skip event (no start/end)', { id: eventId, status: ev.status, hasDateTime: !!ev.start?.dateTime, hasDate: !!ev.start?.date });
+        skippedDetails.push({ id: eventId, reason: 'no start/end' });
         skipped++;
         continue;
       }
