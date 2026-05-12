@@ -18,5 +18,3 @@ verify_jwt = false
 [functions.handle-email-suppression]
 verify_jwt = false
 
-[functions.google-calendar-list]
-verify_jwt = false
