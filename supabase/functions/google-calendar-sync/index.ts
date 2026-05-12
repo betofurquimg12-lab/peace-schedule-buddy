@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
     }
 
     console.log('sync result', { total: items.length, created, updated, deleted, skipped, statusCounts });
-    return json({ ok: true, created, updated, deleted, skipped, total: items.length, statusCounts, skippedDetails: skippedDetails.slice(0, 20) });
+    return json({ ok: true, created, updated, deleted, skipped, total: items.length, calendarAccount, statusCounts, skippedDetails: skippedDetails.slice(0, 20) });
   } catch (err) {
     console.error('google-calendar-sync error', err);
     return json({ error: err instanceof Error ? err.message : 'Unknown' }, 500);
