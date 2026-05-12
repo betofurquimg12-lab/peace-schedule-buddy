@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
           starts_at: startISO,
           ends_at: endISO,
           duration_minutes: dur,
-          external_summary: ev.summary ?? null,
+          external_summary: (isAllDay ? '[dia inteiro] ' : '') + (ev.summary ?? ''),
           meet_link: ev.hangoutLink ?? null,
           google_etag: ev.etag ?? null,
           google_updated_at: ev.updated ?? null,
