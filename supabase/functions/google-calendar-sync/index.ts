@@ -48,27 +48,49 @@ Deno.serve(async (req) => {
       singleEvents: 'true',
       orderBy: 'startTime',
       maxResults: '500',
-      showDeleted: 'true',
     });
 
-    const r = await fetch(`${GATEWAY_URL}/calendars/primary/events?${params}`, {
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': GCAL_API_KEY,
-      },
-    });
-    if (!r.ok) {
-      const t = await r.text();
-      return json({ error: `Calendar list failed [${r.status}]: ${t}` }, 500);
+    const headersAuth = {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      'X-Connection-Api-Key': GCAL_API_KEY,
+    };
+
+    // Fetch all writable/owned calendars (skip holidays/birthdays/contacts)
+    const calListR = await fetch(`${GATEWAY_URL}/users/me/calendarList`, { headers: headersAuth });
+    if (!calListR.ok) {
+      return json({ error: `calendarList failed [${calListR.status}]: ${await calListR.text()}` }, 500);
     }
-    const payload = await r.json();
-    const items: any[] = payload.items ?? [];
+    const calList = await calListR.json();
+    const calendars = (calList.items ?? []).filter((c: any) => {
+      const id = c.id ?? '';
+      if (id.includes('#holiday@') || id.startsWith('addressbook#') || id === 'en.usa#holiday@group.v.calendar.google.com') return false;
+      return true;
+    });
+    const calendarAccount: string | undefined = calendars.find((c: any) => c.primary)?.id;
+
+    // Aggregate items from each calendar
+    const items: any[] = [];
+    for (const cal of calendars) {
+      const r = await fetch(`${GATEWAY_URL}/calendars/${encodeURIComponent(cal.id)}/events?${params}`, { headers: headersAuth });
+      if (!r.ok) {
+        console.warn('events fetch failed for calendar', cal.id, r.status, await r.text());
+        continue;
+      }
+      const p = await r.json();
+      for (const ev of (p.items ?? [])) {
+        items.push({ ...ev, _calendarId: cal.id, _calendarSummary: cal.summary });
+      }
+    }
+
 
     let created = 0, updated = 0, deleted = 0, skipped = 0;
+    const skippedDetails: { id: string; reason: string; status?: string }[] = [];
+    const statusCounts: Record<string, number> = {};
 
     for (const ev of items) {
       const eventId: string = ev.id;
-      if (!eventId) continue;
+      if (!eventId) { skipped++; skippedDetails.push({ id: '?', reason: 'no id' }); continue; }
+      statusCounts[ev.status ?? 'unknown'] = (statusCounts[ev.status ?? 'unknown'] ?? 0) + 1;
 
       // Find existing row by google_event_id
       const { data: existing } = await supabase
@@ -82,14 +104,30 @@ Deno.serve(async (req) => {
         if (existing) {
           await supabase.from('appointments').delete().eq('id', existing.id);
           deleted++;
+        } else {
+          skipped++;
+          skippedDetails.push({ id: eventId, reason: 'cancelled, no local row', status: ev.status });
         }
         continue;
       }
 
-      // Skip events without a real time block (all-day or malformed)
-      const startISO = ev.start?.dateTime;
-      const endISO = ev.end?.dateTime;
+      // Determine start/end. Support all-day events (start.date) and timed (start.dateTime).
+      let startISO: string | undefined = ev.start?.dateTime;
+      let endISO: string | undefined = ev.end?.dateTime;
+      let isAllDay = false;
+      if ((!startISO || !endISO) && ev.start?.date && ev.end?.date) {
+        isAllDay = true;
+        // Google all-day end.date is exclusive (next day). Use 23:59:59 of (end - 1 day) for display.
+        const startDate = ev.start.date as string;
+        const endDateExclusive = new Date(ev.end.date as string);
+        endDateExclusive.setUTCDate(endDateExclusive.getUTCDate() - 1);
+        const endDate = endDateExclusive.toISOString().slice(0, 10);
+        startISO = `${startDate}T00:00:00-03:00`;
+        endISO = `${endDate}T23:59:59-03:00`;
+      }
       if (!startISO || !endISO) {
+        console.log('skip event (no start/end)', { id: eventId, status: ev.status, hasDateTime: !!ev.start?.dateTime, hasDate: !!ev.start?.date });
+        skippedDetails.push({ id: eventId, reason: 'no start/end' });
         skipped++;
         continue;
       }
@@ -118,7 +156,7 @@ Deno.serve(async (req) => {
           starts_at: startISO,
           ends_at: endISO,
           duration_minutes: dur,
-          external_summary: ev.summary ?? null,
+          external_summary: (isAllDay ? '[dia inteiro] ' : '') + (ev.summary ?? ''),
           meet_link: ev.hangoutLink ?? null,
           google_etag: ev.etag ?? null,
           google_updated_at: ev.updated ?? null,
@@ -128,7 +166,7 @@ Deno.serve(async (req) => {
       } else {
         // New external event
         const dur = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
-        await supabase.from('appointments').insert({
+        const { error: insErr } = await supabase.from('appointments').insert({
           patient_id: null,
           starts_at: startISO,
           ends_at: endISO,
@@ -138,18 +176,25 @@ Deno.serve(async (req) => {
           recurrence: 'none',
           price: 0,
           source: 'google',
-          external_summary: ev.summary ?? '(Evento do Google)',
+          external_summary: (isAllDay ? '[dia inteiro] ' : '') + (ev.summary ?? '(Evento do Google)'),
           google_event_id: eventId,
           google_etag: ev.etag ?? null,
           google_updated_at: ev.updated ?? null,
           meet_link: ev.hangoutLink ?? null,
           last_synced_at: new Date().toISOString(),
         });
-        created++;
+        if (insErr) {
+          console.error('insert failed', { id: eventId, err: insErr });
+          skipped++;
+          skippedDetails.push({ id: eventId, reason: `insert: ${insErr.message}` });
+        } else {
+          created++;
+        }
       }
     }
 
-    return json({ ok: true, created, updated, deleted, skipped, total: items.length });
+    console.log('sync result', { total: items.length, created, updated, deleted, skipped, statusCounts });
+    return json({ ok: true, created, updated, deleted, skipped, total: items.length, calendarAccount, statusCounts, skippedDetails: skippedDetails.slice(0, 20) });
   } catch (err) {
     console.error('google-calendar-sync error', err);
     return json({ error: err instanceof Error ? err.message : 'Unknown' }, 500);
