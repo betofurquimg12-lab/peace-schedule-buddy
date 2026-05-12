@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
       } else {
         // New external event
         const dur = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
-        await supabase.from('appointments').insert({
+        const { error: insErr } = await supabase.from('appointments').insert({
           patient_id: null,
           starts_at: startISO,
           ends_at: endISO,
@@ -164,11 +164,18 @@ Deno.serve(async (req) => {
           meet_link: ev.hangoutLink ?? null,
           last_synced_at: new Date().toISOString(),
         });
-        created++;
+        if (insErr) {
+          console.error('insert failed', { id: eventId, err: insErr });
+          skipped++;
+          skippedDetails.push({ id: eventId, reason: `insert: ${insErr.message}` });
+        } else {
+          created++;
+        }
       }
     }
 
-    return json({ ok: true, created, updated, deleted, skipped, total: items.length, skippedDetails: skippedDetails.slice(0, 20) });
+    console.log('sync result', { total: items.length, created, updated, deleted, skipped, statusCounts });
+    return json({ ok: true, created, updated, deleted, skipped, total: items.length, statusCounts, skippedDetails: skippedDetails.slice(0, 20) });
   } catch (err) {
     console.error('google-calendar-sync error', err);
     return json({ error: err instanceof Error ? err.message : 'Unknown' }, 500);
