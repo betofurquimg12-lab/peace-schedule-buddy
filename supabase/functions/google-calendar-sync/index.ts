@@ -48,7 +48,6 @@ Deno.serve(async (req) => {
       singleEvents: 'true',
       orderBy: 'startTime',
       maxResults: '500',
-      showDeleted: 'true',
     });
 
     const r = await fetch(`${GATEWAY_URL}/calendars/primary/events?${params}`, {
