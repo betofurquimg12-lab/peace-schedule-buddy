@@ -65,10 +65,11 @@ Deno.serve(async (req) => {
     const items: any[] = payload.items ?? [];
 
     let created = 0, updated = 0, deleted = 0, skipped = 0;
+    const skippedDetails: { id: string; reason: string }[] = [];
 
     for (const ev of items) {
       const eventId: string = ev.id;
-      if (!eventId) continue;
+      if (!eventId) { skipped++; continue; }
 
       // Find existing row by google_event_id
       const { data: existing } = await supabase
