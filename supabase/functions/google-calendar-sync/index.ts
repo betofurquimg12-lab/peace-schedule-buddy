@@ -65,11 +65,13 @@ Deno.serve(async (req) => {
     const items: any[] = payload.items ?? [];
 
     let created = 0, updated = 0, deleted = 0, skipped = 0;
-    const skippedDetails: { id: string; reason: string }[] = [];
+    const skippedDetails: { id: string; reason: string; status?: string }[] = [];
+    const statusCounts: Record<string, number> = {};
 
     for (const ev of items) {
       const eventId: string = ev.id;
-      if (!eventId) { skipped++; continue; }
+      if (!eventId) { skipped++; skippedDetails.push({ id: '?', reason: 'no id' }); continue; }
+      statusCounts[ev.status ?? 'unknown'] = (statusCounts[ev.status ?? 'unknown'] ?? 0) + 1;
 
       // Find existing row by google_event_id
       const { data: existing } = await supabase
@@ -83,6 +85,9 @@ Deno.serve(async (req) => {
         if (existing) {
           await supabase.from('appointments').delete().eq('id', existing.id);
           deleted++;
+        } else {
+          skipped++;
+          skippedDetails.push({ id: eventId, reason: 'cancelled, no local row', status: ev.status });
         }
         continue;
       }
