@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
     }
     const payload = await r.json();
     const items: any[] = payload.items ?? [];
+    const calendarAccount: string | undefined = payload.summary;
 
     let created = 0, updated = 0, deleted = 0, skipped = 0;
     const skippedDetails: { id: string; reason: string; status?: string }[] = [];
