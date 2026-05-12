@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
           recurrence: 'none',
           price: 0,
           source: 'google',
-          external_summary: ev.summary ?? '(Evento do Google)',
+          external_summary: (isAllDay ? '[dia inteiro] ' : '') + (ev.summary ?? '(Evento do Google)'),
           google_event_id: eventId,
           google_etag: ev.etag ?? null,
           google_updated_at: ev.updated ?? null,
