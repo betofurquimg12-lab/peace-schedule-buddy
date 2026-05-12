@@ -50,19 +50,38 @@ Deno.serve(async (req) => {
       maxResults: '500',
     });
 
-    const r = await fetch(`${GATEWAY_URL}/calendars/primary/events?${params}`, {
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': GCAL_API_KEY,
-      },
-    });
-    if (!r.ok) {
-      const t = await r.text();
-      return json({ error: `Calendar list failed [${r.status}]: ${t}` }, 500);
+    const headersAuth = {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      'X-Connection-Api-Key': GCAL_API_KEY,
+    };
+
+    // Fetch all writable/owned calendars (skip holidays/birthdays/contacts)
+    const calListR = await fetch(`${GATEWAY_URL}/users/me/calendarList`, { headers: headersAuth });
+    if (!calListR.ok) {
+      return json({ error: `calendarList failed [${calListR.status}]: ${await calListR.text()}` }, 500);
     }
-    const payload = await r.json();
-    const items: any[] = payload.items ?? [];
-    const calendarAccount: string | undefined = payload.summary;
+    const calList = await calListR.json();
+    const calendars = (calList.items ?? []).filter((c: any) => {
+      const id = c.id ?? '';
+      if (id.includes('#holiday@') || id.startsWith('addressbook#') || id === 'en.usa#holiday@group.v.calendar.google.com') return false;
+      return true;
+    });
+    const calendarAccount: string | undefined = calendars.find((c: any) => c.primary)?.id;
+
+    // Aggregate items from each calendar
+    const items: any[] = [];
+    for (const cal of calendars) {
+      const r = await fetch(`${GATEWAY_URL}/calendars/${encodeURIComponent(cal.id)}/events?${params}`, { headers: headersAuth });
+      if (!r.ok) {
+        console.warn('events fetch failed for calendar', cal.id, r.status, await r.text());
+        continue;
+      }
+      const p = await r.json();
+      for (const ev of (p.items ?? [])) {
+        items.push({ ...ev, _calendarId: cal.id, _calendarSummary: cal.summary });
+      }
+    }
+
 
     let created = 0, updated = 0, deleted = 0, skipped = 0;
     const skippedDetails: { id: string; reason: string; status?: string }[] = [];
