@@ -72,7 +72,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     payment_status: "pending",
     payment_date: toLocalDate(new Date()),
     payment_method: "pix",
+    is_block: false,
+    block_reason: "",
+    is_vittude: false,
   });
+  const [deleteScopeOpen, setDeleteScopeOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
