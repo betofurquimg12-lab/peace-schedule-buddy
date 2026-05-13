@@ -47,7 +47,7 @@ const Financeiro = () => {
     const [a, e, upcoming] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, source, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
         .order("starts_at", { ascending: false }),
@@ -262,7 +262,12 @@ const Financeiro = () => {
               return (
                 <div key={a.id} className="p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{a.patient?.full_name}</div>
+                    <div className="font-medium truncate flex items-center gap-2">
+                      <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
+                      {a.source === "google" && !a.patient && (
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{formatDateBR(a.starts_at)}</div>
                     {isPaid && (
                       <div className="text-[11px] text-success mt-0.5">
