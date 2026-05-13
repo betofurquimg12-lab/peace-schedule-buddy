@@ -34,11 +34,13 @@ const startOfWeek = (d: Date) => {
 };
 
 const Agenda = () => {
+  const { toast } = useToast();
   const [refDate, setRefDate] = useState(() => startOfWeek(new Date()));
   const [appts, setAppts] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [presetSlot, setPresetSlot] = useState<Date | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const [settings, setSettings] = useState<{ weekdays: number[]; startHour: number; endHour: number }>({
     weekdays: [1, 2, 3, 4, 5],
     startHour: 7,
