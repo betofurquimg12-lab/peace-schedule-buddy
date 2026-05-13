@@ -27,7 +27,7 @@ type Props = {
 //  - until     : until end date
 //  - infinite  : up to a hard cap (52) so we don't generate forever
 const schema = z.object({
-  patient_id: z.string().uuid("Selecione um paciente"),
+  patient_id: z.string().optional().or(z.literal("")),
   date: z.string().min(1),
   time: z.string().min(1),
   duration: z.coerce.number().min(10).max(480),
@@ -39,6 +39,8 @@ const schema = z.object({
   occurrences: z.coerce.number().int().min(1).max(52),
   recurrence_end_date: z.string().optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
+  is_block: z.boolean().optional(),
+  block_reason: z.string().max(500).optional().or(z.literal("")),
 });
 
 const INFINITE_CAP = 52; // safety cap for "infinita"
@@ -70,7 +72,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     payment_status: "pending",
     payment_date: toLocalDate(new Date()),
     payment_method: "pix",
+    is_block: false,
+    block_reason: "",
+    is_vittude: false,
   });
+  const [deleteScopeOpen, setDeleteScopeOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -92,12 +98,17 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           if (data) {
             setForm((f: any) => ({
               ...f,
-              payment_status: data.paid_at ? "paid" : "scheduled_payment",
+              payment_status: appointment.is_vittude ? "vittude" : (data.paid_at ? "paid" : "scheduled_payment"),
               payment_date: data.paid_at ?? data.due_date ?? toLocalDate(s),
               payment_method: data.method ?? "pix",
             }));
           } else {
-            setForm((f: any) => ({ ...f, payment_status: "pending", payment_date: toLocalDate(s), payment_method: "pix" }));
+            setForm((f: any) => ({
+              ...f,
+              payment_status: appointment.is_vittude ? "vittude" : "pending",
+              payment_date: toLocalDate(s),
+              payment_method: "pix",
+            }));
           }
         });
       setForm({
@@ -113,9 +124,12 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         occurrences: 4,
         recurrence_end_date: appointment.recurrence_end_date ?? "",
         notes: appointment.notes ?? "",
-        payment_status: "pending",
+        payment_status: appointment.is_vittude ? "vittude" : "pending",
         payment_date: toLocalDate(s),
         payment_method: "pix",
+        is_block: !!appointment.is_block,
+        block_reason: appointment.block_reason ?? "",
+        is_vittude: !!appointment.is_vittude,
       });
     } else {
       const s = presetStart ?? new Date();
@@ -137,6 +151,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         payment_status: "pending",
         payment_date: toLocalDate(s),
         payment_method: "pix",
+        is_block: false,
+        block_reason: "",
+        is_vittude: false,
       }));
     }
     setConflict(null);
@@ -255,6 +272,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       toast({ title: "Verifique os dados", description: parsed.error.issues[0].message, variant: "destructive" });
       return;
     }
+    const isBlock = !!form.is_block;
+    const isVittude = !!form.is_vittude;
+    if (!isBlock && !parsed.data.patient_id) {
+      return toast({ title: "Selecione um paciente", variant: "destructive" });
+    }
     setSaving(true);
     const start = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
     const end = new Date(start.getTime() + parsed.data.duration * 60000);
@@ -274,39 +296,49 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         (parsed.data.occurrences !== 1 || parsed.data.recurrence_end_date !== (appointment.recurrence_end_date ?? ""))));
 
     if (appointment && !recurrenceChanged) {
-      // Editing only this single appointment
+      // Editing only THIS single appointment — never propagates to recurrence siblings.
       const { error } = await supabase.from("appointments").update({
-        patient_id: parsed.data.patient_id,
+        patient_id: isBlock ? null : (parsed.data.patient_id || null),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
         duration_minutes: parsed.data.duration,
         modality: parsed.data.modality,
-        price: parsed.data.price,
+        price: isBlock ? 0 : parsed.data.price,
         status: parsed.data.status,
         notes: parsed.data.notes || null,
+        is_block: isBlock,
+        block_reason: isBlock ? (form.block_reason || null) : null,
+        is_vittude: isVittude,
       }).eq("id", appointment.id);
       if (error) {
         setSaving(false);
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
-      await upsertPayment(appointment.id, parsed.data.price);
+      if (!isBlock && !isVittude) {
+        await upsertPayment(appointment.id, parsed.data.price);
+      } else {
+        const { data: existing } = await supabase.from("payments").select("id").eq("appointment_id", appointment.id).maybeSingle();
+        if (existing) await supabase.from("payments").delete().eq("id", existing.id);
+      }
 
-      const result = await syncCalendar(
-        appointment.google_event_id ? "update" : "create",
-        appointment.id,
-        {
-          starts_at: start.toISOString(),
-          ends_at: end.toISOString(),
-          patient_id: parsed.data.patient_id,
-          google_event_id: appointment.google_event_id,
-        },
-      );
-      if (result?.event_id) {
-        await supabase.from("appointments").update({
-          google_event_id: result.event_id,
-          meet_link: result.meet_link ?? null,
-        }).eq("id", appointment.id);
+      if (!isBlock) {
+        const result = await syncCalendar(
+          appointment.google_event_id ? "update" : "create",
+          appointment.id,
+          {
+            starts_at: start.toISOString(),
+            ends_at: end.toISOString(),
+            patient_id: parsed.data.patient_id,
+            google_event_id: appointment.google_event_id,
+          },
+        );
+        if (result?.event_id) {
+          await supabase.from("appointments").update({
+            google_event_id: result.event_id,
+            meet_link: result.meet_link ?? null,
+          }).eq("id", appointment.id);
+        }
       }
 
       setSaving(false);
@@ -350,12 +382,12 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       const rows = dates.map((s) => {
         const e = new Date(s.getTime() + parsed.data.duration * 60000);
         return {
-          patient_id: parsed.data.patient_id,
+          patient_id: isBlock ? null : (parsed.data.patient_id || null),
           starts_at: s.toISOString(),
           ends_at: e.toISOString(),
           duration_minutes: parsed.data.duration,
           modality: parsed.data.modality,
-          price: parsed.data.price,
+          price: isBlock ? 0 : parsed.data.price,
           status: parsed.data.status,
           recurrence: parsed.data.recurrence,
           recurrence_group_id: groupId,
@@ -363,6 +395,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           source: "system",
           notes: parsed.data.notes || null,
           created_by: user?.id,
+          is_block: isBlock,
+          block_reason: isBlock ? (form.block_reason || null) : null,
+          is_vittude: isVittude,
         };
       });
 
@@ -373,7 +408,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
-      if (inserted) {
+      if (inserted && !isBlock) {
         for (const row of inserted) {
           const result = await syncCalendar("create", row.id, {
             starts_at: row.starts_at,
@@ -389,7 +424,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         }
       }
 
-      if (inserted && inserted.length) {
+      if (inserted && inserted.length && !isBlock && !isVittude) {
         const sorted = [...inserted].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
         await upsertPayment(sorted[0].id, parsed.data.price);
       }
@@ -429,19 +464,40 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     }
   };
 
-  const remove = async () => {
+  const removeScoped = async (scope: "one" | "forward" | "all") => {
     if (!appointment) return;
-    if (!confirm("Excluir este agendamento?")) return;
-    if (appointment.google_event_id) {
-      await syncCalendar("delete", appointment.id, {
-        google_event_id: appointment.google_event_id,
-      });
+    let toDelete: { id: string; google_event_id?: string | null }[] = [];
+    if (scope === "one" || !appointment.recurrence_group_id) {
+      toDelete = [{ id: appointment.id, google_event_id: appointment.google_event_id }];
+    } else {
+      const q = supabase
+        .from("appointments")
+        .select("id, google_event_id")
+        .eq("recurrence_group_id", appointment.recurrence_group_id);
+      const { data } = scope === "forward"
+        ? await q.gte("starts_at", appointment.starts_at)
+        : await q;
+      toDelete = data ?? [];
     }
-    const { error } = await supabase.from("appointments").delete().eq("id", appointment.id);
+    for (const a of toDelete) {
+      if (a.google_event_id) await syncCalendar("delete", a.id, { google_event_id: a.google_event_id });
+    }
+    const { error } = await supabase.from("appointments").delete().in("id", toDelete.map((a) => a.id));
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    toast({ title: "Excluído" });
+    toast({ title: toDelete.length > 1 ? `${toDelete.length} agendamentos excluídos` : "Excluído" });
+    setDeleteScopeOpen(false);
     onSaved();
     onOpenChange(false);
+  };
+
+  const remove = async () => {
+    if (!appointment) return;
+    if (appointment.recurrence_group_id) {
+      setDeleteScopeOpen(true);
+      return;
+    }
+    if (!confirm("Excluir este agendamento?")) return;
+    await removeScoped("one");
   };
 
   // External event from Google: read-only view
@@ -480,14 +536,31 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         </DialogHeader>
 
         <div className="space-y-3">
-          <Field label="Paciente *">
-            <Select value={form.patient_id} onValueChange={onPatientChange}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
+          {/* Block toggle */}
+          <label className="flex items-center gap-2 text-sm rounded-md border p-2 bg-muted/30 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!form.is_block}
+              onChange={(e) => set("is_block", e.target.checked)}
+            />
+            <span className="font-medium">Bloqueio de agenda</span>
+            <span className="text-xs text-muted-foreground">(reservar horário sem paciente)</span>
+          </label>
+
+          {form.is_block ? (
+            <Field label="Motivo (opcional)">
+              <Input value={form.block_reason} onChange={(e) => set("block_reason", e.target.value)} placeholder="Ex.: Almoço, supervisão..." />
+            </Field>
+          ) : (
+            <Field label="Paciente *">
+              <Select value={form.patient_id} onValueChange={onPatientChange}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Data"><Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} /></Field>
             <Field label="Hora"><Input type="time" value={form.time} onChange={(e) => set("time", e.target.value)} /></Field>
@@ -574,45 +647,51 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             </div>
           )}
 
-          <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pagamento</div>
-            <Field label="Status do pagamento">
-              <Select value={form.payment_status} onValueChange={(v) => set("payment_status", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Em aberto</SelectItem>
-                  <SelectItem value="paid">Já pago</SelectItem>
-                  <SelectItem value="scheduled_payment">A pagar (com previsão)</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            {form.payment_status !== "pending" && (
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={form.payment_status === "paid" ? "Data do pagamento" : "Previsão de pagamento"}>
-                  <Input type="date" value={form.payment_date} onChange={(e) => set("payment_date", e.target.value)} />
-                </Field>
-                <Field label="Forma">
-                  <Select value={form.payment_method} onValueChange={(v) => set("payment_method", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pix">Pix</SelectItem>
-                      <SelectItem value="cash">Dinheiro</SelectItem>
-                      <SelectItem value="card">Cartão</SelectItem>
-                      <SelectItem value="transfer">Transferência</SelectItem>
-                      <SelectItem value="other">Outro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-            )}
-            {existingPayment && (
-              <div className="text-[11px] text-muted-foreground">
-                {existingPayment.paid_at
-                  ? `Já registrado como pago em ${new Date(existingPayment.paid_at + "T00:00:00").toLocaleDateString("pt-BR")}`
-                  : `Previsão atual: ${new Date(existingPayment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}`}
-              </div>
-            )}
-          </div>
+          {!form.is_block && (
+            <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pagamento</div>
+              <Field label="Status do pagamento">
+                <Select
+                  value={form.payment_status}
+                  onValueChange={(v) => setForm((f: any) => ({ ...f, payment_status: v, is_vittude: v === "vittude" }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Em aberto</SelectItem>
+                    <SelectItem value="paid">Já pago</SelectItem>
+                    <SelectItem value="scheduled_payment">A pagar (com previsão)</SelectItem>
+                    <SelectItem value="vittude">Vittude</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              {form.payment_status !== "pending" && form.payment_status !== "vittude" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label={form.payment_status === "paid" ? "Data do pagamento" : "Previsão de pagamento"}>
+                    <Input type="date" value={form.payment_date} onChange={(e) => set("payment_date", e.target.value)} />
+                  </Field>
+                  <Field label="Forma">
+                    <Select value={form.payment_method} onValueChange={(v) => set("payment_method", v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pix">Pix</SelectItem>
+                        <SelectItem value="cash">Dinheiro</SelectItem>
+                        <SelectItem value="card">Cartão</SelectItem>
+                        <SelectItem value="transfer">Transferência</SelectItem>
+                        <SelectItem value="other">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+              )}
+              {existingPayment && form.payment_status !== "vittude" && (
+                <div className="text-[11px] text-muted-foreground">
+                  {existingPayment.paid_at
+                    ? `Já registrado como pago em ${new Date(existingPayment.paid_at + "T00:00:00").toLocaleDateString("pt-BR")}`
+                    : `Previsão atual: ${new Date(existingPayment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}`}
+                </div>
+              )}
+            </div>
+          )}
 
           <Field label="Observações"><Textarea rows={2} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
 
@@ -683,6 +762,20 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           <Button size="sm" onClick={submit} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={deleteScopeOpen} onOpenChange={setDeleteScopeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir agendamento recorrente</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Este agendamento faz parte de uma série. O que deseja excluir?</p>
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
+            <Button variant="outline" onClick={() => removeScoped("one")}>Apenas este evento</Button>
+            <Button variant="outline" onClick={() => removeScoped("forward")}>Este e os próximos</Button>
+            <Button variant="destructive" onClick={() => removeScoped("all")}>Todos os eventos da recorrência</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };

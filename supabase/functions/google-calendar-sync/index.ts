@@ -87,7 +87,29 @@ Deno.serve(async (req) => {
     const skippedDetails: { id: string; reason: string; status?: string }[] = [];
     const statusCounts: Record<string, number> = {};
 
+    // Track which event ids came back from Google so we can hard-delete the rest
+    const seenEventIds = new Set<string>();
+
+    // Preload patients for Vittude name → patient_id matching
+    const { data: allPatients } = await supabase.from('patients').select('id, full_name');
+    const patientByName = new Map<string, string>();
+    for (const p of allPatients ?? []) {
+      if (p.full_name) patientByName.set(p.full_name.trim().toLowerCase(), p.id);
+    }
+
+    const parseVittude = (summary: string | null | undefined) => {
+      const s = summary ?? '';
+      if (!/vittude/i.test(s)) return { isVittude: false, cleanName: s };
+      let name = s.replace(/^vittude\s*-\s*consulta\s*virtual\s*com\s*/i, '').trim();
+      if (!name || /vittude/i.test(name)) {
+        const m = s.match(/com\s+(.+)$/i);
+        name = m ? m[1].trim() : s.replace(/vittude/ig, '').replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim();
+      }
+      return { isVittude: true, cleanName: name || 'Paciente Vittude' };
+    };
+
     for (const ev of items) {
+      if (ev.id) seenEventIds.add(ev.id);
       const eventId: string = ev.id;
       if (!eventId) { skipped++; skippedDetails.push({ id: '?', reason: 'no id' }); continue; }
       statusCounts[ev.status ?? 'unknown'] = (statusCounts[ev.status ?? 'unknown'] ?? 0) + 1;
@@ -95,7 +117,7 @@ Deno.serve(async (req) => {
       // Find existing row by google_event_id
       const { data: existing } = await supabase
         .from('appointments')
-        .select('id, source, google_etag')
+        .select('id, source, google_etag, is_vittude, patient_id')
         .eq('google_event_id', eventId)
         .maybeSingle();
 
@@ -152,22 +174,32 @@ Deno.serve(async (req) => {
           continue;
         }
         const dur = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
+        const summary = ev.summary ?? '';
+        const { isVittude, cleanName } = parseVittude(summary);
+        const matchedPatient = isVittude ? patientByName.get(cleanName.toLowerCase()) ?? null : null;
+        const displaySummary = (isAllDay ? '[dia inteiro] ' : '') + (isVittude ? cleanName : summary);
         await supabase.from('appointments').update({
           starts_at: startISO,
           ends_at: endISO,
           duration_minutes: dur,
-          external_summary: (isAllDay ? '[dia inteiro] ' : '') + (ev.summary ?? ''),
+          external_summary: displaySummary,
           meet_link: ev.hangoutLink ?? null,
           google_etag: ev.etag ?? null,
           google_updated_at: ev.updated ?? null,
           last_synced_at: new Date().toISOString(),
+          is_vittude: isVittude,
+          patient_id: matchedPatient ?? existing.patient_id ?? null,
         }).eq('id', existing.id);
         updated++;
       } else {
         // New external event
         const dur = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
+        const summary = ev.summary ?? '';
+        const { isVittude, cleanName } = parseVittude(summary);
+        const matchedPatient = isVittude ? patientByName.get(cleanName.toLowerCase()) ?? null : null;
+        const displaySummary = (isAllDay ? '[dia inteiro] ' : '') + (isVittude ? cleanName : (summary || '(Evento do Google)'));
         const { error: insErr } = await supabase.from('appointments').insert({
-          patient_id: null,
+          patient_id: matchedPatient,
           starts_at: startISO,
           ends_at: endISO,
           duration_minutes: dur,
@@ -176,7 +208,8 @@ Deno.serve(async (req) => {
           recurrence: 'none',
           price: 0,
           source: 'google',
-          external_summary: (isAllDay ? '[dia inteiro] ' : '') + (ev.summary ?? '(Evento do Google)'),
+          is_vittude: isVittude,
+          external_summary: displaySummary,
           google_event_id: eventId,
           google_etag: ev.etag ?? null,
           google_updated_at: ev.updated ?? null,
@@ -190,6 +223,27 @@ Deno.serve(async (req) => {
         } else {
           created++;
         }
+      }
+    }
+
+    // Hard-delete: any external rows whose google_event_id was NOT seen in the
+    // current Google response window are gone from Google → drop them locally.
+    {
+      const past = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const future = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: localExternal } = await supabase
+        .from('appointments')
+        .select('id, google_event_id')
+        .eq('source', 'google')
+        .gte('starts_at', past)
+        .lte('starts_at', future);
+      const stale = (localExternal ?? []).filter((r) => r.google_event_id && !seenEventIds.has(r.google_event_id));
+      if (stale.length) {
+        const { error: delErr } = await supabase
+          .from('appointments')
+          .delete()
+          .in('id', stale.map((r) => r.id));
+        if (!delErr) deleted += stale.length;
       }
     }
 

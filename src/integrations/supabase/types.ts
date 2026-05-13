@@ -79,6 +79,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          block_reason: string | null
           created_at: string
           created_by: string | null
           duration_minutes: number
@@ -88,6 +89,8 @@ export type Database = {
           google_event_id: string | null
           google_updated_at: string | null
           id: string
+          is_block: boolean
+          is_vittude: boolean
           last_synced_at: string | null
           meet_link: string | null
           modality: Database["public"]["Enums"]["appointment_modality"]
@@ -104,6 +107,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          block_reason?: string | null
           created_at?: string
           created_by?: string | null
           duration_minutes?: number
@@ -113,6 +117,8 @@ export type Database = {
           google_event_id?: string | null
           google_updated_at?: string | null
           id?: string
+          is_block?: boolean
+          is_vittude?: boolean
           last_synced_at?: string | null
           meet_link?: string | null
           modality?: Database["public"]["Enums"]["appointment_modality"]
@@ -129,6 +135,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          block_reason?: string | null
           created_at?: string
           created_by?: string | null
           duration_minutes?: number
@@ -138,6 +145,8 @@ export type Database = {
           google_event_id?: string | null
           google_updated_at?: string | null
           id?: string
+          is_block?: boolean
+          is_vittude?: boolean
           last_synced_at?: string | null
           meet_link?: string | null
           modality?: Database["public"]["Enums"]["appointment_modality"]
@@ -565,6 +574,7 @@ export type Database = {
         Returns: boolean
       }
       is_clinic_member: { Args: { _user_id: string }; Returns: boolean }
+      mark_past_appointments_done: { Args: never; Returns: undefined }
       move_to_dlq: {
         Args: {
           dlq_name: string
