@@ -382,12 +382,12 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       const rows = dates.map((s) => {
         const e = new Date(s.getTime() + parsed.data.duration * 60000);
         return {
-          patient_id: parsed.data.patient_id,
+          patient_id: isBlock ? null : (parsed.data.patient_id || null),
           starts_at: s.toISOString(),
           ends_at: e.toISOString(),
           duration_minutes: parsed.data.duration,
           modality: parsed.data.modality,
-          price: parsed.data.price,
+          price: isBlock ? 0 : parsed.data.price,
           status: parsed.data.status,
           recurrence: parsed.data.recurrence,
           recurrence_group_id: groupId,
@@ -395,6 +395,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           source: "system",
           notes: parsed.data.notes || null,
           created_by: user?.id,
+          is_block: isBlock,
+          block_reason: isBlock ? (form.block_reason || null) : null,
+          is_vittude: isVittude,
         };
       });
 
@@ -405,7 +408,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
-      if (inserted) {
+      if (inserted && !isBlock) {
         for (const row of inserted) {
           const result = await syncCalendar("create", row.id, {
             starts_at: row.starts_at,
@@ -421,7 +424,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         }
       }
 
-      if (inserted && inserted.length) {
+      if (inserted && inserted.length && !isBlock && !isVittude) {
         const sorted = [...inserted].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
         await upsertPayment(sorted[0].id, parsed.data.price);
       }
