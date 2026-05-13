@@ -87,7 +87,29 @@ Deno.serve(async (req) => {
     const skippedDetails: { id: string; reason: string; status?: string }[] = [];
     const statusCounts: Record<string, number> = {};
 
+    // Track which event ids came back from Google so we can hard-delete the rest
+    const seenEventIds = new Set<string>();
+
+    // Preload patients for Vittude name → patient_id matching
+    const { data: allPatients } = await supabase.from('patients').select('id, full_name');
+    const patientByName = new Map<string, string>();
+    for (const p of allPatients ?? []) {
+      if (p.full_name) patientByName.set(p.full_name.trim().toLowerCase(), p.id);
+    }
+
+    const parseVittude = (summary: string | null | undefined) => {
+      const s = summary ?? '';
+      if (!/vittude/i.test(s)) return { isVittude: false, cleanName: s };
+      let name = s.replace(/^vittude\s*-\s*consulta\s*virtual\s*com\s*/i, '').trim();
+      if (!name || /vittude/i.test(name)) {
+        const m = s.match(/com\s+(.+)$/i);
+        name = m ? m[1].trim() : s.replace(/vittude/ig, '').replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim();
+      }
+      return { isVittude: true, cleanName: name || 'Paciente Vittude' };
+    };
+
     for (const ev of items) {
+      if (ev.id) seenEventIds.add(ev.id);
       const eventId: string = ev.id;
       if (!eventId) { skipped++; skippedDetails.push({ id: '?', reason: 'no id' }); continue; }
       statusCounts[ev.status ?? 'unknown'] = (statusCounts[ev.status ?? 'unknown'] ?? 0) + 1;
