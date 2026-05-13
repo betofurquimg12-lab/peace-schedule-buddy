@@ -47,7 +47,7 @@ const Financeiro = () => {
     const [a, e, upcoming] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, source, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
         .order("starts_at", { ascending: false }),
