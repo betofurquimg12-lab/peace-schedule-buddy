@@ -464,19 +464,40 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     }
   };
 
-  const remove = async () => {
+  const removeScoped = async (scope: "one" | "forward" | "all") => {
     if (!appointment) return;
-    if (!confirm("Excluir este agendamento?")) return;
-    if (appointment.google_event_id) {
-      await syncCalendar("delete", appointment.id, {
-        google_event_id: appointment.google_event_id,
-      });
+    let toDelete: { id: string; google_event_id?: string | null }[] = [];
+    if (scope === "one" || !appointment.recurrence_group_id) {
+      toDelete = [{ id: appointment.id, google_event_id: appointment.google_event_id }];
+    } else {
+      const q = supabase
+        .from("appointments")
+        .select("id, google_event_id")
+        .eq("recurrence_group_id", appointment.recurrence_group_id);
+      const { data } = scope === "forward"
+        ? await q.gte("starts_at", appointment.starts_at)
+        : await q;
+      toDelete = data ?? [];
     }
-    const { error } = await supabase.from("appointments").delete().eq("id", appointment.id);
+    for (const a of toDelete) {
+      if (a.google_event_id) await syncCalendar("delete", a.id, { google_event_id: a.google_event_id });
+    }
+    const { error } = await supabase.from("appointments").delete().in("id", toDelete.map((a) => a.id));
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-    toast({ title: "Excluído" });
+    toast({ title: toDelete.length > 1 ? `${toDelete.length} agendamentos excluídos` : "Excluído" });
+    setDeleteScopeOpen(false);
     onSaved();
     onOpenChange(false);
+  };
+
+  const remove = async () => {
+    if (!appointment) return;
+    if (appointment.recurrence_group_id) {
+      setDeleteScopeOpen(true);
+      return;
+    }
+    if (!confirm("Excluir este agendamento?")) return;
+    await removeScoped("one");
   };
 
   // External event from Google: read-only view
