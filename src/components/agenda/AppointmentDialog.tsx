@@ -536,14 +536,31 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         </DialogHeader>
 
         <div className="space-y-3">
-          <Field label="Paciente *">
-            <Select value={form.patient_id} onValueChange={onPatientChange}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
+          {/* Block toggle */}
+          <label className="flex items-center gap-2 text-sm rounded-md border p-2 bg-muted/30 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!form.is_block}
+              onChange={(e) => set("is_block", e.target.checked)}
+            />
+            <span className="font-medium">Bloqueio de agenda</span>
+            <span className="text-xs text-muted-foreground">(reservar horário sem paciente)</span>
+          </label>
+
+          {form.is_block ? (
+            <Field label="Motivo (opcional)">
+              <Input value={form.block_reason} onChange={(e) => set("block_reason", e.target.value)} placeholder="Ex.: Almoço, supervisão..." />
+            </Field>
+          ) : (
+            <Field label="Paciente *">
+              <Select value={form.patient_id} onValueChange={onPatientChange}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Data"><Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} /></Field>
             <Field label="Hora"><Input type="time" value={form.time} onChange={(e) => set("time", e.target.value)} /></Field>
