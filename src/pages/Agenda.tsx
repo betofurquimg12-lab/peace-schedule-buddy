@@ -112,7 +112,28 @@ const Agenda = () => {
       <PageHeader
         title="Agenda"
         description="Atendimentos agendados na semana"
-        action={<Button onClick={() => { setEditing(null); setPresetSlot(null); setOpen(true); }}><Plus className="h-4 w-4" /> Nova consulta</Button>}
+        action={
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                setSyncing(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke("google-calendar-sync");
+                  if (error) throw error;
+                  toast({ title: "Sincronizado", description: `criados ${data?.created ?? 0}, atualizados ${data?.updated ?? 0}, removidos ${data?.deleted ?? 0}` });
+                  await load();
+                } catch (e: any) {
+                  toast({ title: "Erro ao sincronizar", description: e?.message ?? String(e), variant: "destructive" });
+                } finally { setSyncing(false); }
+              }}
+              disabled={syncing}
+            >
+              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sincronizar
+            </Button>
+            <Button onClick={() => { setEditing(null); setPresetSlot(null); setOpen(true); }}><Plus className="h-4 w-4" /> Nova consulta</Button>
+          </div>
+        }
       />
 
       <div className="flex items-center justify-between mb-4">
