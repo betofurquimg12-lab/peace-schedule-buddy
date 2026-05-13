@@ -762,6 +762,20 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           <Button size="sm" onClick={submit} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={deleteScopeOpen} onOpenChange={setDeleteScopeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir agendamento recorrente</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Este agendamento faz parte de uma série. O que deseja excluir?</p>
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
+            <Button variant="outline" onClick={() => removeScoped("one")}>Apenas este evento</Button>
+            <Button variant="outline" onClick={() => removeScoped("forward")}>Este e os próximos</Button>
+            <Button variant="destructive" onClick={() => removeScoped("all")}>Todos os eventos da recorrência</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
