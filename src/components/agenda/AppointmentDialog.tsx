@@ -272,6 +272,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       toast({ title: "Verifique os dados", description: parsed.error.issues[0].message, variant: "destructive" });
       return;
     }
+    const isBlock = !!form.is_block;
+    const isVittude = !!form.is_vittude;
+    if (!isBlock && !parsed.data.patient_id) {
+      return toast({ title: "Selecione um paciente", variant: "destructive" });
+    }
     setSaving(true);
     const start = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
     const end = new Date(start.getTime() + parsed.data.duration * 60000);
@@ -291,39 +296,49 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         (parsed.data.occurrences !== 1 || parsed.data.recurrence_end_date !== (appointment.recurrence_end_date ?? ""))));
 
     if (appointment && !recurrenceChanged) {
-      // Editing only this single appointment
+      // Editing only THIS single appointment — never propagates to recurrence siblings.
       const { error } = await supabase.from("appointments").update({
-        patient_id: parsed.data.patient_id,
+        patient_id: isBlock ? null : (parsed.data.patient_id || null),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
         duration_minutes: parsed.data.duration,
         modality: parsed.data.modality,
-        price: parsed.data.price,
+        price: isBlock ? 0 : parsed.data.price,
         status: parsed.data.status,
         notes: parsed.data.notes || null,
+        is_block: isBlock,
+        block_reason: isBlock ? (form.block_reason || null) : null,
+        is_vittude: isVittude,
       }).eq("id", appointment.id);
       if (error) {
         setSaving(false);
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
-      await upsertPayment(appointment.id, parsed.data.price);
+      if (!isBlock && !isVittude) {
+        await upsertPayment(appointment.id, parsed.data.price);
+      } else {
+        const { data: existing } = await supabase.from("payments").select("id").eq("appointment_id", appointment.id).maybeSingle();
+        if (existing) await supabase.from("payments").delete().eq("id", existing.id);
+      }
 
-      const result = await syncCalendar(
-        appointment.google_event_id ? "update" : "create",
-        appointment.id,
-        {
-          starts_at: start.toISOString(),
-          ends_at: end.toISOString(),
-          patient_id: parsed.data.patient_id,
-          google_event_id: appointment.google_event_id,
-        },
-      );
-      if (result?.event_id) {
-        await supabase.from("appointments").update({
-          google_event_id: result.event_id,
-          meet_link: result.meet_link ?? null,
-        }).eq("id", appointment.id);
+      if (!isBlock) {
+        const result = await syncCalendar(
+          appointment.google_event_id ? "update" : "create",
+          appointment.id,
+          {
+            starts_at: start.toISOString(),
+            ends_at: end.toISOString(),
+            patient_id: parsed.data.patient_id,
+            google_event_id: appointment.google_event_id,
+          },
+        );
+        if (result?.event_id) {
+          await supabase.from("appointments").update({
+            google_event_id: result.event_id,
+            meet_link: result.meet_link ?? null,
+          }).eq("id", appointment.id);
+        }
       }
 
       setSaving(false);
