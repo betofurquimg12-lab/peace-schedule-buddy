@@ -98,12 +98,17 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           if (data) {
             setForm((f: any) => ({
               ...f,
-              payment_status: data.paid_at ? "paid" : "scheduled_payment",
+              payment_status: appointment.is_vittude ? "vittude" : (data.paid_at ? "paid" : "scheduled_payment"),
               payment_date: data.paid_at ?? data.due_date ?? toLocalDate(s),
               payment_method: data.method ?? "pix",
             }));
           } else {
-            setForm((f: any) => ({ ...f, payment_status: "pending", payment_date: toLocalDate(s), payment_method: "pix" }));
+            setForm((f: any) => ({
+              ...f,
+              payment_status: appointment.is_vittude ? "vittude" : "pending",
+              payment_date: toLocalDate(s),
+              payment_method: "pix",
+            }));
           }
         });
       setForm({
@@ -119,9 +124,12 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         occurrences: 4,
         recurrence_end_date: appointment.recurrence_end_date ?? "",
         notes: appointment.notes ?? "",
-        payment_status: "pending",
+        payment_status: appointment.is_vittude ? "vittude" : "pending",
         payment_date: toLocalDate(s),
         payment_method: "pix",
+        is_block: !!appointment.is_block,
+        block_reason: appointment.block_reason ?? "",
+        is_vittude: !!appointment.is_vittude,
       });
     } else {
       const s = presetStart ?? new Date();
@@ -143,6 +151,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         payment_status: "pending",
         payment_date: toLocalDate(s),
         payment_method: "pix",
+        is_block: false,
+        block_reason: "",
+        is_vittude: false,
       }));
     }
     setConflict(null);
