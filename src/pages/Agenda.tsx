@@ -276,20 +276,33 @@ const Agenda = () => {
                 return (
                   <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 min-w-0 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
                     {slotAppts.map((a) => {
-                      const ext = a.source === "google";
+                      const ext = a.source === "google" && !a.is_vittude;
+                      const isBlock = !!a.is_block;
+                      const isVittude = !!a.is_vittude;
+                      const displayName = isBlock
+                        ? (a.block_reason || "Bloqueado")
+                        : (a.patient?.full_name ?? a.external_summary ?? "Sem título");
+                      const btnClass = isBlock
+                        ? "bg-foreground/85 text-background hover:bg-foreground"
+                        : ext
+                          ? "bg-muted text-muted-foreground border border-dashed"
+                          : "bg-primary/15 hover:bg-primary/25 text-primary";
                       return (
                         <div key={a.id} className="relative mb-1">
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
-                            className={`block w-full text-left rounded-md px-2 py-1 pr-14 text-xs ${ext ? "bg-muted text-muted-foreground border border-dashed" : "bg-primary/15 hover:bg-primary/25 text-primary"}`}
+                            className={`block w-full text-left rounded-md px-2 py-1 pr-14 text-xs ${btnClass}`}
                           >
-                            <div className="font-medium truncate">
-                              {ext ? `🔒 ${a.external_summary ?? "Google"}` : a.patient?.full_name}
+                            <div className="font-medium truncate flex items-center gap-1">
+                              {ext && <span>🔒</span>}
+                              <span className="truncate">{displayName}</span>
+                              {isVittude && <Badge variant="secondary" className="text-[9px] py-0 px-1 leading-tight">Vittude</Badge>}
+                              {isBlock && <Badge variant="outline" className="text-[9px] py-0 px-1 leading-tight border-background/40 text-background">Bloqueado</Badge>}
                             </div>
                             <div className="opacity-80">{hm(a.starts_at)}</div>
                           </button>
                           <div className="absolute top-1 right-1 flex items-center gap-0.5">
-                            {!ext && a.patient?.phone && (
+                            {!ext && !isBlock && a.patient?.phone && (
                               <>
                                 <button
                                   type="button"
@@ -300,18 +313,20 @@ const Agenda = () => {
                                 >
                                   <MessageCircle className="h-3.5 w-3.5" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
-                                  className="inline-flex h-5 w-5 items-center justify-center rounded text-amber-600 hover:bg-amber-50"
-                                  aria-label="Cobrar pelo WhatsApp"
-                                  title="Cobrar pelo WhatsApp"
-                                >
-                                  <DollarSign className="h-3.5 w-3.5" />
-                                </button>
+                                {!isVittude && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
+                                    className="inline-flex h-5 w-5 items-center justify-center rounded text-amber-600 hover:bg-amber-50"
+                                    aria-label="Cobrar pelo WhatsApp"
+                                    title="Cobrar pelo WhatsApp"
+                                  >
+                                    <DollarSign className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                               </>
                             )}
-                            {!ext && a.meet_link && (
+                            {!ext && !isBlock && a.meet_link && (
                               <a
                                 href={a.meet_link}
                                 target="_blank"
