@@ -27,7 +27,7 @@ const Dashboard = () => {
     const [{ data: up }, { data: monthAppts }, { data: payments }, { data: todayAppts }] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, status, price, patient:patients(full_name)")
+        .select("id, starts_at, status, price, source, external_summary, patient:patients(full_name)")
         .gte("starts_at", new Date().toISOString())
         .order("starts_at")
         .limit(5),
