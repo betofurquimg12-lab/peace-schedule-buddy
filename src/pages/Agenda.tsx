@@ -162,19 +162,31 @@ const Agenda = () => {
               ) : (
                 <div className="space-y-2">
                   {dayAppts.map((a) => {
-                    const ext = a.source === "google";
+                    const ext = a.source === "google" && !a.is_vittude;
+                    const isBlock = !!a.is_block;
+                    const isVittude = !!a.is_vittude;
+                    const displayName = isBlock
+                      ? (a.block_reason || "Bloqueado")
+                      : (a.patient?.full_name ?? a.external_summary ?? "Sem título");
+                    const cardClass = isBlock
+                      ? "bg-foreground/85 text-background border-foreground/30"
+                      : ext
+                        ? "border-dashed bg-muted/30"
+                        : "";
                     return (
-                      <Card key={a.id} className={`p-3 cursor-pointer ${ext ? "border-dashed bg-muted/30" : ""}`} onClick={() => { setEditing(a); setOpen(true); }}>
+                      <Card key={a.id} className={`p-3 cursor-pointer ${cardClass}`} onClick={() => { setEditing(a); setOpen(true); }}>
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="font-medium text-sm flex items-center gap-1.5">
-                              {ext && <span title="Bloqueado · vindo do Google Calendar">🔒</span>}
-                              {ext ? (a.external_summary ?? "Evento do Google") : a.patient?.full_name}
+                              {ext && <span title="Vindo do Google Calendar">🔒</span>}
+                              <span className="truncate">{displayName}</span>
+                              {isVittude && <Badge variant="secondary" className="text-[10px]">Vittude</Badge>}
+                              {isBlock && <Badge variant="outline" className="text-[10px] border-background/40 text-background">Bloqueado</Badge>}
                             </div>
-                            <div className="text-xs text-muted-foreground">{hm(a.starts_at)} – {hm(a.ends_at)}</div>
+                            <div className={`text-xs ${isBlock ? "text-background/70" : "text-muted-foreground"}`}>{hm(a.starts_at)} – {hm(a.ends_at)}</div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {!ext && a.patient?.phone && (
+                            {!ext && !isBlock && a.patient?.phone && (
                               <>
                                 <button
                                   type="button"
@@ -185,18 +197,20 @@ const Agenda = () => {
                                 >
                                   <MessageCircle className="h-4 w-4" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
-                                  aria-label="Cobrar pelo WhatsApp"
-                                  title="Cobrar pelo WhatsApp"
-                                >
-                                  <DollarSign className="h-4 w-4" />
-                                </button>
+                                {!isVittude && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
+                                    aria-label="Cobrar pelo WhatsApp"
+                                    title="Cobrar pelo WhatsApp"
+                                  >
+                                    <DollarSign className="h-4 w-4" />
+                                  </button>
+                                )}
                               </>
                             )}
-                            {!ext && a.meet_link && (
+                            {!ext && !isBlock && a.meet_link && (
                               <a
                                 href={a.meet_link}
                                 target="_blank"
@@ -209,7 +223,7 @@ const Agenda = () => {
                                 <Video className="h-4 w-4" />
                               </a>
                             )}
-                            {!ext && <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>}
+                            {!ext && !isBlock && !isVittude && <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>}
                             {ext && <Badge variant="outline" className="text-[10px]">Bloqueado</Badge>}
                           </div>
                         </div>
