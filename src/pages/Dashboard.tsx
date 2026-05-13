@@ -99,8 +99,13 @@ const Dashboard = () => {
             <ul className="space-y-3">
               {upcoming.map((a) => (
                 <li key={a.id} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
-                  <div>
-                    <div className="font-medium">{a.patient?.full_name ?? "Paciente"}</div>
+                  <div className="min-w-0 flex-1 pr-3">
+                    <div className="font-medium truncate flex items-center gap-2">
+                      <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
+                      {a.source === "google" && !a.patient && (
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{formatDateTimeBR(a.starts_at)}</div>
                   </div>
                   <Badge variant="secondary">{formatBRL(Number(a.price))}</Badge>
