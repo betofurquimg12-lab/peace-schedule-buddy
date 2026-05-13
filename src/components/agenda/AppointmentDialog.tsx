@@ -27,7 +27,7 @@ type Props = {
 //  - until     : until end date
 //  - infinite  : up to a hard cap (52) so we don't generate forever
 const schema = z.object({
-  patient_id: z.string().uuid("Selecione um paciente"),
+  patient_id: z.string().optional().or(z.literal("")),
   date: z.string().min(1),
   time: z.string().min(1),
   duration: z.coerce.number().min(10).max(480),
@@ -39,6 +39,8 @@ const schema = z.object({
   occurrences: z.coerce.number().int().min(1).max(52),
   recurrence_end_date: z.string().optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
+  is_block: z.boolean().optional(),
+  block_reason: z.string().max(500).optional().or(z.literal("")),
 });
 
 const INFINITE_CAP = 52; // safety cap for "infinita"
