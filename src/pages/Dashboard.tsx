@@ -12,32 +12,54 @@ const Dashboard = () => {
   const [stats, setStats] = useState({ today: 0, monthRevenue: 0, monthPending: 0, sessions: 0 });
   const [upcoming, setUpcoming] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
+  const [nextToday, setNextToday] = useState<any>(null);
+  const [todayBlocks, setTodayBlocks] = useState<any[]>([]);
 
   useEffect(() => {
     void load();
   }, []);
 
   const load = async () => {
+    // Auto mark past appointments as done
+    try { await supabase.rpc("mark_past_appointments_done"); } catch { /* ignore */ }
+
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
 
-    const [{ data: up }, { data: monthAppts }, { data: payments }, { data: todayAppts }] = await Promise.all([
+    const [{ data: up }, { data: monthAppts }, { data: payments }, { data: todayAppts }, { data: nextTodayData }, { data: blocksData }] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, status, price, source, external_summary, patient:patients(full_name)")
+        .select("id, starts_at, status, price, source, is_vittude, external_summary, patient:patients(full_name)")
         .gte("starts_at", new Date().toISOString())
+        .eq("is_block", false)
         .order("starts_at")
         .limit(5),
       supabase
         .from("appointments")
-        .select("id, price, status")
+        .select("id, price, status, is_block")
         .gte("starts_at", start)
-        .lt("starts_at", end),
+        .lt("starts_at", end)
+        .eq("is_block", false),
       supabase.from("payments").select("amount, paid_at").gte("paid_at", start.slice(0, 10)).lt("paid_at", end.slice(0, 10)),
-      supabase.from("appointments").select("id").gte("starts_at", todayStart).lt("starts_at", todayEnd),
+      supabase.from("appointments").select("id").gte("starts_at", todayStart).lt("starts_at", todayEnd).eq("is_block", false),
+      supabase
+        .from("appointments")
+        .select("id, starts_at, is_vittude, external_summary, patient:patients(full_name)")
+        .gte("starts_at", new Date().toISOString())
+        .lt("starts_at", todayEnd)
+        .eq("is_block", false)
+        .order("starts_at")
+        .limit(1),
+      supabase
+        .from("appointments")
+        .select("id, starts_at, ends_at, block_reason, external_summary")
+        .gte("starts_at", todayStart)
+        .lt("starts_at", todayEnd)
+        .eq("is_block", true)
+        .order("starts_at"),
     ]);
 
     const realized = (monthAppts ?? []).filter((a) => a.status === "done");
@@ -52,6 +74,8 @@ const Dashboard = () => {
       sessions: realized.length,
     });
     setUpcoming(up ?? []);
+    setNextToday(nextTodayData?.[0] ?? null);
+    setTodayBlocks(blocksData ?? []);
 
     // Pending list: done sessions w/o payment
     const { data: doneAppts } = await supabase
@@ -80,11 +104,56 @@ const Dashboard = () => {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <StatCard icon={Calendar} label="Consultas hoje" value={stats.today.toString()} />
         <StatCard icon={Users} label="Sessões realizadas no mês" value={stats.sessions.toString()} />
         <StatCard icon={Wallet} label="Recebido no mês" value={formatBRL(stats.monthRevenue)} tone="success" />
         <StatCard icon={Wallet} label="A receber" value={formatBRL(stats.monthPending)} tone="warning" />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-3 mb-8">
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5" /> Próxima sessão hoje
+          </div>
+          {nextToday ? (
+            <div>
+              <div className="text-lg font-semibold">
+                {new Date(nextToday.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </div>
+              <div className="text-sm flex items-center gap-2 flex-wrap">
+                <span className="truncate">
+                  {nextToday.patient?.full_name ?? nextToday.external_summary ?? "Sem título"}
+                </span>
+                {nextToday.is_vittude && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal">Vittude</Badge>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">Sem mais sessões hoje.</div>
+          )}
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground mb-1">Bloqueios de hoje</div>
+          {todayBlocks.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Nenhum bloqueio.</div>
+          ) : (
+            <ul className="space-y-1">
+              {todayBlocks.map((b) => (
+                <li key={b.id} className="text-sm">
+                  <span className="font-medium">
+                    {new Date(b.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    {b.ends_at && " – " + new Date(b.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {(b.block_reason || b.external_summary) && (
+                    <span className="text-muted-foreground"> · {b.block_reason ?? b.external_summary}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

@@ -22,6 +22,8 @@ const Financeiro = () => {
   const [appts, setAppts] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
+  const [aReceberAll, setAReceberAll] = useState<any[]>([]);
+  const [vittudeAll, setVittudeAll] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any>(null);
   const [payForm, setPayForm] = useState({ amount: 0, paid_at: new Date().toISOString().slice(0,10), method: "pix" });
   const [receiptDialog, setReceiptDialog] = useState<any>(null);
@@ -44,12 +46,13 @@ const Financeiro = () => {
   }, [month]);
 
   const load = async () => {
-    const [a, e, upcoming] = await Promise.all([
+    const [a, e, upcoming, allPending, vit] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, source, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, source, is_block, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
+        .eq("is_block", false)
         .order("starts_at", { ascending: false }),
       supabase
         .from("finance_entries")
@@ -57,26 +60,44 @@ const Financeiro = () => {
         .gte("entry_date", range.start.toISOString().slice(0, 10))
         .lt("entry_date", range.end.toISOString().slice(0, 10))
         .order("entry_date", { ascending: false }),
-      // Upcoming receipts (regardless of month) – payments with due_date in the future and not yet paid
       supabase
         .from("payments")
         .select("id, amount, due_date, method, notes, appointment:appointments(id, starts_at, patient:patients(id, full_name))")
         .is("paid_at", null)
         .not("due_date", "is", null)
         .order("due_date", { ascending: true }),
+      // A receber (global, sem filtro de mês): appointments não-bloqueio, não-vittude, não-cancelados, sem pagamento ou não pagos
+      supabase
+        .from("appointments")
+        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .eq("is_block", false)
+        .eq("is_vittude", false)
+        .not("status", "in", "(canceled,no_show)")
+        .order("starts_at", { ascending: true }),
+      // Vittude (global)
+      supabase
+        .from("appointments")
+        .select("id, starts_at, status, external_summary, patient:patients(id, full_name)")
+        .eq("is_vittude", true)
+        .order("starts_at", { ascending: false }),
     ]);
-    const normalized = (a.data ?? []).map((row: any) => ({
+    const normalize = (rows: any[]) => rows.map((row: any) => ({
       ...row,
       payment: Array.isArray(row.payment) ? row.payment : row.payment ? [row.payment] : [],
     }));
-    setAppts(normalized);
+    setAppts(normalize(a.data ?? []));
     setEntries(e.data ?? []);
     setUpcomingPayments(upcoming.data ?? []);
+    const pendingOnly = normalize(allPending.data ?? []).filter(
+      (r: any) => !r.payment[0] || !r.payment[0].paid_at,
+    );
+    setAReceberAll(pendingOnly);
+    setVittudeAll(vit.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
 
-  // Sessões consideradas para o financeiro: todas as não canceladas (realizadas, agendadas, etc.)
-  const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show");
+  // Sessões consideradas para o financeiro: todas as não canceladas (realizadas, agendadas, etc.) e não vittude (vai pra aba própria)
+  const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show" && !a.is_vittude);
   const realized = billable; // mantém nome usado abaixo
   const totalDone = billable.reduce((s, a) => s + Number(a.price || 0), 0);
   // Recebido = pagamentos com paid_at preenchido (independe do status da sessão)
@@ -244,94 +265,72 @@ const Financeiro = () => {
         </div>
       )}
 
-      <Tabs defaultValue="sessions">
-        <TabsList>
-          <TabsTrigger value="sessions">Sessões</TabsTrigger>
-          <TabsTrigger value="upcoming">A receber</TabsTrigger>
+      <Tabs defaultValue="receivable">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="receivable">A receber</TabsTrigger>
+          <TabsTrigger value="receivable_month">A receber (Mês)</TabsTrigger>
+          <TabsTrigger value="vittude">Vittude</TabsTrigger>
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
+          <TabsTrigger value="general">Geral</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sessions" className="mt-4">
+        <TabsContent value="receivable" className="mt-4">
           <Card className="divide-y">
-            {realized.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Nenhuma sessão realizada no mês.</div>}
-            {realized.map((a) => {
-              const pay = a.payment?.[0];
-              const isPaid = !!pay?.paid_at;
-              const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
-              return (
-                <div key={a.id} className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate flex items-center gap-2">
-                      <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
-                      {a.source === "google" && !a.patient && (
-                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{formatDateBR(a.starts_at)}</div>
-                    {isPaid && (
-                      <div className="text-[11px] text-success mt-0.5">
-                        Pago em {formatDateBR(pay.paid_at)} · {pay.method}
-                      </div>
-                    )}
-                    {isScheduled && (
-                      <div className="text-[11px] text-warning mt-0.5">
-                        Previsto para {formatDateBR(pay.due_date)} · {pay.method}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
-                      {isPaid && <Badge className="bg-success/15 text-success border-0">Pago</Badge>}
-                      {isScheduled && <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>}
-                      {!pay && <Badge variant="outline">Pendente</Badge>}
-                    </div>
-                    {isPaid ? (
-                      <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
-                    ) : isScheduled ? (
-                      <Button size="sm" onClick={() => openReceiptDialog(pay)}>
-                        <Check className="h-4 w-4" /> Recebi
-                      </Button>
-                    ) : (
-                      <>
-                        {a.patient?.phone && (
-                          <Button asChild variant="ghost" size="icon" title="Cobrar via WhatsApp">
-                            <a href={buildWaUrl(a.patient.phone, `Olá ${a.patient.full_name}, tudo bem? Passando para confirmar o pagamento da sessão de ${formatDateBR(a.starts_at)} no valor de ${formatBRL(Number(a.price))}. Obrigada!`)} target="_blank" rel="noopener noreferrer">
-                              <MessageCircle className="h-4 w-4 text-success" />
-                            </a>
-                          </Button>
-                        )}
-                        <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {aReceberAll.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</div>
+            )}
+            {aReceberAll.map((a) => <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} />)}
           </Card>
         </TabsContent>
 
-        <TabsContent value="upcoming" className="mt-4">
-          <Card className="divide-y">
-            {upcomingPayments.length === 0 && (
-              <div className="p-6 text-sm text-muted-foreground text-center">Nenhum recebimento previsto.</div>
-            )}
-            {upcomingPayments.map((p) => (
-              <div key={p.id} className="p-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{p.appointment?.patient?.full_name ?? "—"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Sessão de {p.appointment?.starts_at ? formatDateBR(p.appointment.starts_at) : "—"} · Previsto em {formatDateBR(p.due_date)} · {p.method}
+        <TabsContent value="receivable_month" className="mt-4 space-y-4">
+          {(() => {
+            const groups = new Map<string, any[]>();
+            aReceberAll.forEach((a) => {
+              const key = a.starts_at ? a.starts_at.slice(0, 7) : "sem-previsao";
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(a);
+            });
+            const sorted = Array.from(groups.entries()).sort(([k1], [k2]) => {
+              if (k1 === "sem-previsao") return 1;
+              if (k2 === "sem-previsao") return -1;
+              return k1.localeCompare(k2);
+            });
+            if (sorted.length === 0) return <Card className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</Card>;
+            return sorted.map(([key, items]) => {
+              const subtotal = items.reduce((s, a) => s + Number(a.price || 0), 0);
+              const label = key === "sem-previsao"
+                ? "Sem Previsão"
+                : new Date(key + "-01T00:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+              return (
+                <Card key={key} className="divide-y">
+                  <div className="p-3 flex items-center justify-between bg-muted/30">
+                    <div className="text-sm font-semibold capitalize">{label}</div>
+                    <div className="text-sm font-semibold text-warning">{formatBRL(subtotal)}</div>
                   </div>
-                  {p.notes && <div className="text-[11px] text-muted-foreground mt-0.5">{p.notes}</div>}
+                  {items.map((a) => <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} />)}
+                </Card>
+              );
+            });
+          })()}
+        </TabsContent>
+
+        <TabsContent value="vittude" className="mt-4">
+          <Card className="divide-y">
+            {vittudeAll.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground text-center">Nenhum atendimento Vittude.</div>
+            )}
+            {vittudeAll.map((a) => (
+              <div key={a.id} className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium truncate flex items-center gap-2">
+                    <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
+                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Vittude</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{a.starts_at ? formatDateBR(a.starts_at) : "—"}</div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm font-semibold text-warning">{formatBRL(Number(p.amount))}</div>
-                  <Button size="sm" onClick={() => openReceiptDialog(p)}>
-                    <Check className="h-4 w-4" /> Recebi
-                  </Button>
-                </div>
+                <Badge variant="secondary" className="capitalize">{statusLabel(a.status)}</Badge>
               </div>
             ))}
           </Card>
@@ -387,6 +386,66 @@ const Financeiro = () => {
                 </div>
               </div>
             ))}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="general" className="mt-4">
+          <Card className="divide-y">
+            {realized.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Nenhuma sessão no mês.</div>}
+            {realized.map((a) => {
+              const pay = a.payment?.[0];
+              const isPaid = !!pay?.paid_at;
+              const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
+              return (
+                <div key={a.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate flex items-center gap-2">
+                      <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
+                      {a.source === "google" && !a.patient && (
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{formatDateBR(a.starts_at)}</div>
+                    {isPaid && (
+                      <div className="text-[11px] text-success mt-0.5">
+                        Pago em {formatDateBR(pay.paid_at)} · {pay.method}
+                      </div>
+                    )}
+                    {isScheduled && (
+                      <div className="text-[11px] text-warning mt-0.5">
+                        Previsto para {formatDateBR(pay.due_date)} · {pay.method}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
+                      {isPaid && <Badge className="bg-success/15 text-success border-0">Pago</Badge>}
+                      {isScheduled && <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>}
+                      {!pay && <Badge variant="outline">Pendente</Badge>}
+                    </div>
+                    {isPaid ? (
+                      <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
+                    ) : isScheduled ? (
+                      <Button size="sm" onClick={() => openReceiptDialog(pay)}>
+                        <Check className="h-4 w-4" /> Recebi
+                      </Button>
+                    ) : (
+                      <>
+                        {a.patient?.phone && (
+                          <Button asChild variant="ghost" size="icon" title="Cobrar via WhatsApp">
+                            <a href={buildWaUrl(a.patient.phone, `Olá ${a.patient.full_name}, tudo bem? Passando para confirmar o pagamento da sessão de ${formatDateBR(a.starts_at)} no valor de ${formatBRL(Number(a.price))}. Obrigada!`)} target="_blank" rel="noopener noreferrer">
+                              <MessageCircle className="h-4 w-4 text-success" />
+                            </a>
+                          </Button>
+                        )}
+                        <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </Card>
         </TabsContent>
       </Tabs>
@@ -509,5 +568,42 @@ const Stat = ({ label, value, tone }: { label: string; value: string; tone?: "su
     <div className={`text-xl font-semibold ${tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : ""}`}>{value}</div>
   </Card>
 );
+
+const statusLabel = (s: string) =>
+  ({ scheduled: "Agendada", done: "Realizada", canceled: "Cancelada", no_show: "Faltou" }[s] ?? s);
+
+const ReceivableRow = ({ a, openPay, openReceiptDialog }: { a: any; openPay: (a: any) => void; openReceiptDialog: (p: any) => void }) => {
+  const pay = a.payment?.[0];
+  const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
+  return (
+    <div className="p-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="font-medium truncate flex items-center gap-2">
+          <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
+          {a.source === "google" && !a.patient && (
+            <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground">{a.starts_at ? formatDateBR(a.starts_at) : "Sem previsão"}</div>
+        {isScheduled && (
+          <div className="text-[11px] text-warning mt-0.5">
+            Previsto para {formatDateBR(pay.due_date)} · {pay.method}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="text-right">
+          <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
+          {isScheduled
+            ? <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>
+            : <Badge variant="outline">Pendente</Badge>}
+        </div>
+        {isScheduled
+          ? <Button size="sm" onClick={() => openReceiptDialog(pay)}><Check className="h-4 w-4" /> Recebi</Button>
+          : <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>}
+      </div>
+    </div>
+  );
+};
 
 export default Financeiro;
