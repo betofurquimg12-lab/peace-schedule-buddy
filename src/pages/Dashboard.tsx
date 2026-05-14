@@ -21,7 +21,7 @@ const Dashboard = () => {
 
   const load = async () => {
     // Auto mark past appointments as done
-    await supabase.rpc("mark_past_appointments_done").catch(() => {});
+    try { await supabase.rpc("mark_past_appointments_done"); } catch { /* ignore */ }
 
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
