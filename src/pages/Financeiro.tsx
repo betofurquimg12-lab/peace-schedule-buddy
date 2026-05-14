@@ -265,94 +265,72 @@ const Financeiro = () => {
         </div>
       )}
 
-      <Tabs defaultValue="sessions">
-        <TabsList>
-          <TabsTrigger value="sessions">Sessões</TabsTrigger>
-          <TabsTrigger value="upcoming">A receber</TabsTrigger>
+      <Tabs defaultValue="receivable">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="receivable">A receber</TabsTrigger>
+          <TabsTrigger value="receivable_month">A receber (Mês)</TabsTrigger>
+          <TabsTrigger value="vittude">Vittude</TabsTrigger>
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
+          <TabsTrigger value="general">Geral</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sessions" className="mt-4">
+        <TabsContent value="receivable" className="mt-4">
           <Card className="divide-y">
-            {realized.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Nenhuma sessão realizada no mês.</div>}
-            {realized.map((a) => {
-              const pay = a.payment?.[0];
-              const isPaid = !!pay?.paid_at;
-              const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
-              return (
-                <div key={a.id} className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate flex items-center gap-2">
-                      <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
-                      {a.source === "google" && !a.patient && (
-                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{formatDateBR(a.starts_at)}</div>
-                    {isPaid && (
-                      <div className="text-[11px] text-success mt-0.5">
-                        Pago em {formatDateBR(pay.paid_at)} · {pay.method}
-                      </div>
-                    )}
-                    {isScheduled && (
-                      <div className="text-[11px] text-warning mt-0.5">
-                        Previsto para {formatDateBR(pay.due_date)} · {pay.method}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
-                      {isPaid && <Badge className="bg-success/15 text-success border-0">Pago</Badge>}
-                      {isScheduled && <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>}
-                      {!pay && <Badge variant="outline">Pendente</Badge>}
-                    </div>
-                    {isPaid ? (
-                      <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
-                    ) : isScheduled ? (
-                      <Button size="sm" onClick={() => openReceiptDialog(pay)}>
-                        <Check className="h-4 w-4" /> Recebi
-                      </Button>
-                    ) : (
-                      <>
-                        {a.patient?.phone && (
-                          <Button asChild variant="ghost" size="icon" title="Cobrar via WhatsApp">
-                            <a href={buildWaUrl(a.patient.phone, `Olá ${a.patient.full_name}, tudo bem? Passando para confirmar o pagamento da sessão de ${formatDateBR(a.starts_at)} no valor de ${formatBRL(Number(a.price))}. Obrigada!`)} target="_blank" rel="noopener noreferrer">
-                              <MessageCircle className="h-4 w-4 text-success" />
-                            </a>
-                          </Button>
-                        )}
-                        <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {aReceberAll.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</div>
+            )}
+            {aReceberAll.map((a) => <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} />)}
           </Card>
         </TabsContent>
 
-        <TabsContent value="upcoming" className="mt-4">
-          <Card className="divide-y">
-            {upcomingPayments.length === 0 && (
-              <div className="p-6 text-sm text-muted-foreground text-center">Nenhum recebimento previsto.</div>
-            )}
-            {upcomingPayments.map((p) => (
-              <div key={p.id} className="p-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{p.appointment?.patient?.full_name ?? "—"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    Sessão de {p.appointment?.starts_at ? formatDateBR(p.appointment.starts_at) : "—"} · Previsto em {formatDateBR(p.due_date)} · {p.method}
+        <TabsContent value="receivable_month" className="mt-4 space-y-4">
+          {(() => {
+            const groups = new Map<string, any[]>();
+            aReceberAll.forEach((a) => {
+              const key = a.starts_at ? a.starts_at.slice(0, 7) : "sem-previsao";
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(a);
+            });
+            const sorted = Array.from(groups.entries()).sort(([k1], [k2]) => {
+              if (k1 === "sem-previsao") return 1;
+              if (k2 === "sem-previsao") return -1;
+              return k1.localeCompare(k2);
+            });
+            if (sorted.length === 0) return <Card className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</Card>;
+            return sorted.map(([key, items]) => {
+              const subtotal = items.reduce((s, a) => s + Number(a.price || 0), 0);
+              const label = key === "sem-previsao"
+                ? "Sem Previsão"
+                : new Date(key + "-01T00:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+              return (
+                <Card key={key} className="divide-y">
+                  <div className="p-3 flex items-center justify-between bg-muted/30">
+                    <div className="text-sm font-semibold capitalize">{label}</div>
+                    <div className="text-sm font-semibold text-warning">{formatBRL(subtotal)}</div>
                   </div>
-                  {p.notes && <div className="text-[11px] text-muted-foreground mt-0.5">{p.notes}</div>}
+                  {items.map((a) => <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} />)}
+                </Card>
+              );
+            });
+          })()}
+        </TabsContent>
+
+        <TabsContent value="vittude" className="mt-4">
+          <Card className="divide-y">
+            {vittudeAll.length === 0 && (
+              <div className="p-6 text-sm text-muted-foreground text-center">Nenhum atendimento Vittude.</div>
+            )}
+            {vittudeAll.map((a) => (
+              <div key={a.id} className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium truncate flex items-center gap-2">
+                    <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
+                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Vittude</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{a.starts_at ? formatDateBR(a.starts_at) : "—"}</div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-sm font-semibold text-warning">{formatBRL(Number(p.amount))}</div>
-                  <Button size="sm" onClick={() => openReceiptDialog(p)}>
-                    <Check className="h-4 w-4" /> Recebi
-                  </Button>
-                </div>
+                <Badge variant="secondary" className="capitalize">{statusLabel(a.status)}</Badge>
               </div>
             ))}
           </Card>
@@ -408,6 +386,66 @@ const Financeiro = () => {
                 </div>
               </div>
             ))}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="general" className="mt-4">
+          <Card className="divide-y">
+            {realized.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Nenhuma sessão no mês.</div>}
+            {realized.map((a) => {
+              const pay = a.payment?.[0];
+              const isPaid = !!pay?.paid_at;
+              const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
+              return (
+                <div key={a.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate flex items-center gap-2">
+                      <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
+                      {a.source === "google" && !a.patient && (
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{formatDateBR(a.starts_at)}</div>
+                    {isPaid && (
+                      <div className="text-[11px] text-success mt-0.5">
+                        Pago em {formatDateBR(pay.paid_at)} · {pay.method}
+                      </div>
+                    )}
+                    {isScheduled && (
+                      <div className="text-[11px] text-warning mt-0.5">
+                        Previsto para {formatDateBR(pay.due_date)} · {pay.method}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
+                      {isPaid && <Badge className="bg-success/15 text-success border-0">Pago</Badge>}
+                      {isScheduled && <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>}
+                      {!pay && <Badge variant="outline">Pendente</Badge>}
+                    </div>
+                    {isPaid ? (
+                      <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
+                    ) : isScheduled ? (
+                      <Button size="sm" onClick={() => openReceiptDialog(pay)}>
+                        <Check className="h-4 w-4" /> Recebi
+                      </Button>
+                    ) : (
+                      <>
+                        {a.patient?.phone && (
+                          <Button asChild variant="ghost" size="icon" title="Cobrar via WhatsApp">
+                            <a href={buildWaUrl(a.patient.phone, `Olá ${a.patient.full_name}, tudo bem? Passando para confirmar o pagamento da sessão de ${formatDateBR(a.starts_at)} no valor de ${formatBRL(Number(a.price))}. Obrigada!`)} target="_blank" rel="noopener noreferrer">
+                              <MessageCircle className="h-4 w-4 text-success" />
+                            </a>
+                          </Button>
+                        )}
+                        <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </Card>
         </TabsContent>
       </Tabs>
