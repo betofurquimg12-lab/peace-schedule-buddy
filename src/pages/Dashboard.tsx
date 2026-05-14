@@ -20,26 +20,46 @@ const Dashboard = () => {
   }, []);
 
   const load = async () => {
+    // Auto mark past appointments as done
+    await supabase.rpc("mark_past_appointments_done").catch(() => {});
+
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
 
-    const [{ data: up }, { data: monthAppts }, { data: payments }, { data: todayAppts }] = await Promise.all([
+    const [{ data: up }, { data: monthAppts }, { data: payments }, { data: todayAppts }, { data: nextTodayData }, { data: blocksData }] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, status, price, source, external_summary, patient:patients(full_name)")
+        .select("id, starts_at, status, price, source, is_vittude, external_summary, patient:patients(full_name)")
         .gte("starts_at", new Date().toISOString())
+        .eq("is_block", false)
         .order("starts_at")
         .limit(5),
       supabase
         .from("appointments")
-        .select("id, price, status")
+        .select("id, price, status, is_block")
         .gte("starts_at", start)
-        .lt("starts_at", end),
+        .lt("starts_at", end)
+        .eq("is_block", false),
       supabase.from("payments").select("amount, paid_at").gte("paid_at", start.slice(0, 10)).lt("paid_at", end.slice(0, 10)),
-      supabase.from("appointments").select("id").gte("starts_at", todayStart).lt("starts_at", todayEnd),
+      supabase.from("appointments").select("id").gte("starts_at", todayStart).lt("starts_at", todayEnd).eq("is_block", false),
+      supabase
+        .from("appointments")
+        .select("id, starts_at, is_vittude, external_summary, patient:patients(full_name)")
+        .gte("starts_at", new Date().toISOString())
+        .lt("starts_at", todayEnd)
+        .eq("is_block", false)
+        .order("starts_at")
+        .limit(1),
+      supabase
+        .from("appointments")
+        .select("id, starts_at, ends_at, block_reason, external_summary")
+        .gte("starts_at", todayStart)
+        .lt("starts_at", todayEnd)
+        .eq("is_block", true)
+        .order("starts_at"),
     ]);
 
     const realized = (monthAppts ?? []).filter((a) => a.status === "done");
@@ -54,6 +74,8 @@ const Dashboard = () => {
       sessions: realized.length,
     });
     setUpcoming(up ?? []);
+    setNextToday(nextTodayData?.[0] ?? null);
+    setTodayBlocks(blocksData ?? []);
 
     // Pending list: done sessions w/o payment
     const { data: doneAppts } = await supabase
