@@ -30,6 +30,10 @@ const PatientDetail = () => {
 
   if (!patient) return null;
 
+  const now = new Date().toISOString();
+  const upcoming = appts.filter((a) => a.starts_at >= now).slice().reverse(); // ascending
+  const past = appts.filter((a) => a.starts_at < now);
+
   const totalDone = appts.filter((a) => a.status === "done").reduce((s, a) => s + Number(a.price || 0), 0);
   const paid = appts.reduce((s, a) => s + (a.payment?.[0]?.amount ? Number(a.payment[0].amount) : 0), 0);
   const balance = Math.max(0, totalDone - paid);
