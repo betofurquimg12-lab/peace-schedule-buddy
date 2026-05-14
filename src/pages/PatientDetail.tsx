@@ -85,13 +85,32 @@ const PatientDetail = () => {
         </Card>
       )}
 
+      <Card className="p-5 mb-6">
+        <h2 className="text-lg mb-3">Próximas sessões</h2>
+        {upcoming.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma sessão agendada.</p>
+        ) : (
+          <ul className="divide-y">
+            {upcoming.map((a) => (
+              <li key={a.id} className="py-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium">{formatDateTimeBR(a.starts_at)}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{statusLabel(a.status)}</div>
+                </div>
+                <div className="text-sm">{formatBRL(Number(a.price))}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <Card className="p-5">
         <h2 className="text-lg mb-3">Histórico de sessões</h2>
-        {appts.length === 0 ? (
+        {past.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma sessão registrada.</p>
         ) : (
           <ul className="divide-y">
-            {appts.map((a) => {
+            {past.map((a) => {
               const pay = a.payment?.[0];
               return (
                 <li key={a.id} className="py-3 flex items-center justify-between gap-3">
