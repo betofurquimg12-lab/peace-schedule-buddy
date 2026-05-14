@@ -12,6 +12,8 @@ const Dashboard = () => {
   const [stats, setStats] = useState({ today: 0, monthRevenue: 0, monthPending: 0, sessions: 0 });
   const [upcoming, setUpcoming] = useState<any[]>([]);
   const [pending, setPending] = useState<any[]>([]);
+  const [nextToday, setNextToday] = useState<any>(null);
+  const [todayBlocks, setTodayBlocks] = useState<any[]>([]);
 
   useEffect(() => {
     void load();
