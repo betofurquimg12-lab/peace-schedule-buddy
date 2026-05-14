@@ -46,12 +46,13 @@ const Financeiro = () => {
   }, [month]);
 
   const load = async () => {
-    const [a, e, upcoming] = await Promise.all([
+    const [a, e, upcoming, allPending, vit] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, source, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, source, is_block, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
+        .eq("is_block", false)
         .order("starts_at", { ascending: false }),
       supabase
         .from("finance_entries")
@@ -59,23 +60,40 @@ const Financeiro = () => {
         .gte("entry_date", range.start.toISOString().slice(0, 10))
         .lt("entry_date", range.end.toISOString().slice(0, 10))
         .order("entry_date", { ascending: false }),
-      // Upcoming receipts (regardless of month) – payments with due_date in the future and not yet paid
       supabase
         .from("payments")
         .select("id, amount, due_date, method, notes, appointment:appointments(id, starts_at, patient:patients(id, full_name))")
         .is("paid_at", null)
         .not("due_date", "is", null)
         .order("due_date", { ascending: true }),
+      // A receber (global, sem filtro de mês): appointments não-bloqueio, não-vittude, não-cancelados, sem pagamento ou não pagos
+      supabase
+        .from("appointments")
+        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .eq("is_block", false)
+        .eq("is_vittude", false)
+        .not("status", "in", "(canceled,no_show)")
+        .order("starts_at", { ascending: true }),
+      // Vittude (global)
+      supabase
+        .from("appointments")
+        .select("id, starts_at, status, external_summary, patient:patients(id, full_name)")
+        .eq("is_vittude", true)
+        .order("starts_at", { ascending: false }),
     ]);
-    const normalized = (a.data ?? []).map((row: any) => ({
+    const normalize = (rows: any[]) => rows.map((row: any) => ({
       ...row,
       payment: Array.isArray(row.payment) ? row.payment : row.payment ? [row.payment] : [],
     }));
-    setAppts(normalized);
+    setAppts(normalize(a.data ?? []));
     setEntries(e.data ?? []);
     setUpcomingPayments(upcoming.data ?? []);
+    const pendingOnly = normalize(allPending.data ?? []).filter(
+      (r: any) => !r.payment[0] || !r.payment[0].paid_at,
+    );
+    setAReceberAll(pendingOnly);
+    setVittudeAll(vit.data ?? []);
   };
-  useEffect(() => { void load(); }, [month]);
 
   // Sessões consideradas para o financeiro: todas as não canceladas (realizadas, agendadas, etc.)
   const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show");
