@@ -118,9 +118,11 @@ const Dashboard = () => {
           </div>
           {nextToday ? (
             <div>
-              <div className="text-lg font-semibold flex items-center gap-2 flex-wrap">
-                {formatDateTimeBR(nextToday.starts_at).split(" ").slice(-1)[0] /* time portion */}
-                <span className="text-base font-normal truncate">
+              <div className="text-lg font-semibold">
+                {new Date(nextToday.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </div>
+              <div className="text-sm flex items-center gap-2 flex-wrap">
+                <span className="truncate">
                   {nextToday.patient?.full_name ?? nextToday.external_summary ?? "Sem título"}
                 </span>
                 {nextToday.is_vittude && (
