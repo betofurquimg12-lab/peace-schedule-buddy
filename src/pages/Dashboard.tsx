@@ -104,11 +104,54 @@ const Dashboard = () => {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <StatCard icon={Calendar} label="Consultas hoje" value={stats.today.toString()} />
         <StatCard icon={Users} label="Sessões realizadas no mês" value={stats.sessions.toString()} />
         <StatCard icon={Wallet} label="Recebido no mês" value={formatBRL(stats.monthRevenue)} tone="success" />
         <StatCard icon={Wallet} label="A receber" value={formatBRL(stats.monthPending)} tone="warning" />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-3 mb-8">
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5" /> Próxima sessão hoje
+          </div>
+          {nextToday ? (
+            <div>
+              <div className="text-lg font-semibold flex items-center gap-2 flex-wrap">
+                {formatDateTimeBR(nextToday.starts_at).split(" ").slice(-1)[0] /* time portion */}
+                <span className="text-base font-normal truncate">
+                  {nextToday.patient?.full_name ?? nextToday.external_summary ?? "Sem título"}
+                </span>
+                {nextToday.is_vittude && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal">Vittude</Badge>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">Sem mais sessões hoje.</div>
+          )}
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground mb-1">Bloqueios de hoje</div>
+          {todayBlocks.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Nenhum bloqueio.</div>
+          ) : (
+            <ul className="space-y-1">
+              {todayBlocks.map((b) => (
+                <li key={b.id} className="text-sm">
+                  <span className="font-medium">
+                    {new Date(b.starts_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    {b.ends_at && " – " + new Date(b.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {(b.block_reason || b.external_summary) && (
+                    <span className="text-muted-foreground"> · {b.block_reason ?? b.external_summary}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
