@@ -22,6 +22,8 @@ const Financeiro = () => {
   const [appts, setAppts] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
+  const [aReceberAll, setAReceberAll] = useState<any[]>([]);
+  const [vittudeAll, setVittudeAll] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any>(null);
   const [payForm, setPayForm] = useState({ amount: 0, paid_at: new Date().toISOString().slice(0,10), method: "pix" });
   const [receiptDialog, setReceiptDialog] = useState<any>(null);
