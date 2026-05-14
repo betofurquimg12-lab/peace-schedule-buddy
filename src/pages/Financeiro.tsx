@@ -569,4 +569,41 @@ const Stat = ({ label, value, tone }: { label: string; value: string; tone?: "su
   </Card>
 );
 
+const statusLabel = (s: string) =>
+  ({ scheduled: "Agendada", done: "Realizada", canceled: "Cancelada", no_show: "Faltou" }[s] ?? s);
+
+const ReceivableRow = ({ a, openPay, openReceiptDialog }: { a: any; openPay: (a: any) => void; openReceiptDialog: (p: any) => void }) => {
+  const pay = a.payment?.[0];
+  const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
+  return (
+    <div className="p-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="font-medium truncate flex items-center gap-2">
+          <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
+          {a.source === "google" && !a.patient && (
+            <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground">{a.starts_at ? formatDateBR(a.starts_at) : "Sem previsão"}</div>
+        {isScheduled && (
+          <div className="text-[11px] text-warning mt-0.5">
+            Previsto para {formatDateBR(pay.due_date)} · {pay.method}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="text-right">
+          <div className="text-sm font-medium">{formatBRL(Number(a.price))}</div>
+          {isScheduled
+            ? <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>
+            : <Badge variant="outline">Pendente</Badge>}
+        </div>
+        {isScheduled
+          ? <Button size="sm" onClick={() => openReceiptDialog(pay)}><Check className="h-4 w-4" /> Recebi</Button>
+          : <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>}
+      </div>
+    </div>
+  );
+};
+
 export default Financeiro;
