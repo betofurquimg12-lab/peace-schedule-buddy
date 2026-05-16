@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
 import { ChevronLeft, ChevronRight, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { PaginationControls, paginate } from "@/components/PaginationControls";
 
 const Financeiro = () => {
   const { user } = useAuth();
