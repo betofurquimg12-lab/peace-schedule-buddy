@@ -325,23 +325,26 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         if (existing) await supabase.from("payments").delete().eq("id", existing.id);
       }
 
+      // Fire-and-forget Google sync — não bloqueia UI
       if (!isBlock) {
-        const result = await syncCalendar(
-          appointment.google_event_id ? "update" : "create",
-          appointment.id,
-          {
-            starts_at: start.toISOString(),
-            ends_at: end.toISOString(),
-            patient_id: parsed.data.patient_id,
-            google_event_id: appointment.google_event_id,
-          },
-        );
-        if (result?.event_id) {
-          await supabase.from("appointments").update({
-            google_event_id: result.event_id,
-            meet_link: result.meet_link ?? null,
-          }).eq("id", appointment.id);
-        }
+        void (async () => {
+          const result = await syncCalendar(
+            appointment.google_event_id ? "update" : "create",
+            appointment.id,
+            {
+              starts_at: start.toISOString(),
+              ends_at: end.toISOString(),
+              patient_id: parsed.data.patient_id,
+              google_event_id: appointment.google_event_id,
+            },
+          );
+          if (result?.event_id) {
+            await supabase.from("appointments").update({
+              google_event_id: result.event_id,
+              meet_link: result.meet_link ?? null,
+            }).eq("id", appointment.id);
+          }
+        })();
       }
 
       setSaving(false);
