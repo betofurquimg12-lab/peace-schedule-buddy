@@ -41,6 +41,15 @@ const Financeiro = () => {
     notes: "",
   });
 
+  // Pagination per tab
+  const [pageSize, setPageSize] = useState(10);
+  const [pages, setPages] = useState({ receivable: 1, receivable_month: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
+  const setPage = (k: keyof typeof pages, p: number) => setPages((s) => ({ ...s, [k]: p }));
+
+  // Delete confirmation dialogs
+  const [confirmDeletePay, setConfirmDeletePay] = useState<{ id: string } | null>(null);
+  const [confirmDeleteEntry, setConfirmDeleteEntry] = useState<{ id: string } | null>(null);
+
   const range = useMemo(() => {
     const start = new Date(month);
     const end = new Date(month); end.setMonth(end.getMonth() + 1);
