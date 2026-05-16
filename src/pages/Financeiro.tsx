@@ -230,9 +230,11 @@ const Financeiro = () => {
     void load();
   };
 
-  const removeEntry = async (id: string) => {
-    if (!confirm("Excluir este lançamento?")) return;
-    const { error } = await supabase.from("finance_entries").delete().eq("id", id);
+  const removeEntry = (id: string) => setConfirmDeleteEntry({ id });
+  const doRemoveEntry = async () => {
+    if (!confirmDeleteEntry) return;
+    const { error } = await supabase.from("finance_entries").delete().eq("id", confirmDeleteEntry.id);
+    setConfirmDeleteEntry(null);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     void load();
   };
