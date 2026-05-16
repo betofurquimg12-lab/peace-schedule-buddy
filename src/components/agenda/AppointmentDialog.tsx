@@ -556,12 +556,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             </Field>
           ) : (
             <Field label="Paciente *">
-              <Select value={form.patient_id} onValueChange={onPatientChange}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <PatientCombobox patients={patients} value={form.patient_id} onChange={onPatientChange} />
             </Field>
           )}
           <div className="grid grid-cols-2 gap-3">
