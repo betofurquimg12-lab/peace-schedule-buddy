@@ -296,7 +296,13 @@ const Financeiro = () => {
             {aReceberAll.length === 0 && (
               <div className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</div>
             )}
-            {aReceberAll.map((a) => <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} />)}
+            {paginate(aReceberAll, pages.receivable, pageSize).map((a) => (
+              <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} />
+            ))}
+            {aReceberAll.length > 0 && (
+              <PaginationControls page={pages.receivable} pageSize={pageSize} total={aReceberAll.length}
+                onPageChange={(p) => setPage("receivable", p)} onPageSizeChange={setPageSize} />
+            )}
           </Card>
         </TabsContent>
 
@@ -314,21 +320,34 @@ const Financeiro = () => {
               return k1.localeCompare(k2);
             });
             if (sorted.length === 0) return <Card className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</Card>;
-            return sorted.map(([key, items]) => {
+            // Flatten groups with headers for pagination
+            type Row = { kind: "header"; key: string; label: string; subtotal: number } | { kind: "item"; key: string; a: any };
+            const flat: Row[] = [];
+            sorted.forEach(([key, items]) => {
               const subtotal = items.reduce((s, a) => s + Number(a.price || 0), 0);
               const label = key === "sem-previsao"
                 ? "Sem Previsão"
                 : new Date(key + "-01T00:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-              return (
-                <Card key={key} className="divide-y">
-                  <div className="p-3 flex items-center justify-between bg-muted/30">
-                    <div className="text-sm font-semibold capitalize">{label}</div>
-                    <div className="text-sm font-semibold text-warning">{formatBRL(subtotal)}</div>
-                  </div>
-                  {items.map((a) => <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} />)}
-                </Card>
-              );
+              flat.push({ kind: "header", key: `h-${key}`, label, subtotal });
+              items.forEach((a) => flat.push({ kind: "item", key: a.id, a }));
             });
+            const paged = paginate(flat, pages.receivable_month, pageSize);
+            return (
+              <>
+                <Card className="divide-y">
+                  {paged.map((r) => r.kind === "header" ? (
+                    <div key={r.key} className="p-3 flex items-center justify-between bg-muted/30">
+                      <div className="text-sm font-semibold capitalize">{r.label}</div>
+                      <div className="text-sm font-semibold text-warning">{formatBRL(r.subtotal)}</div>
+                    </div>
+                  ) : (
+                    <ReceivableRow key={r.key} a={r.a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} />
+                  ))}
+                  <PaginationControls page={pages.receivable_month} pageSize={pageSize} total={flat.length}
+                    onPageChange={(p) => setPage("receivable_month", p)} onPageSizeChange={setPageSize} />
+                </Card>
+              </>
+            );
           })()}
         </TabsContent>
 
@@ -337,7 +356,7 @@ const Financeiro = () => {
             {vittudeAll.length === 0 && (
               <div className="p-6 text-sm text-muted-foreground text-center">Nenhum atendimento Vittude.</div>
             )}
-            {vittudeAll.map((a) => (
+            {paginate(vittudeAll, pages.vittude, pageSize).map((a) => (
               <div key={a.id} className="p-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-medium truncate flex items-center gap-2">
@@ -349,6 +368,10 @@ const Financeiro = () => {
                 <Badge variant="secondary" className="capitalize">{statusLabel(a.status)}</Badge>
               </div>
             ))}
+            {vittudeAll.length > 0 && (
+              <PaginationControls page={pages.vittude} pageSize={pageSize} total={vittudeAll.length}
+                onPageChange={(p) => setPage("vittude", p)} onPageSizeChange={setPageSize} />
+            )}
           </Card>
         </TabsContent>
 
@@ -359,7 +382,7 @@ const Financeiro = () => {
                 Nenhum lançamento manual no mês. Use os botões "Crédito" ou "Débito" acima.
               </div>
             )}
-            {entries.map((e) => (
+            {paginate(entries, pages.entries, pageSize).map((e) => (
               <div key={e.id} className="p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   {e.type === "credit"
@@ -383,13 +406,17 @@ const Financeiro = () => {
                 </div>
               </div>
             ))}
+            {entries.length > 0 && (
+              <PaginationControls page={pages.entries} pageSize={pageSize} total={entries.length}
+                onPageChange={(p) => setPage("entries", p)} onPageSizeChange={setPageSize} />
+            )}
           </Card>
         </TabsContent>
 
         <TabsContent value="patients" className="mt-4">
           <Card className="divide-y">
             {byPatient.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Sem dados no mês.</div>}
-            {byPatient.map((p) => (
+            {paginate(byPatient, pages.patients, pageSize).map((p) => (
               <div key={p.id} className="p-4 flex items-center justify-between">
                 <div>
                   <div className="font-medium">{p.name}</div>
@@ -402,13 +429,17 @@ const Financeiro = () => {
                 </div>
               </div>
             ))}
+            {byPatient.length > 0 && (
+              <PaginationControls page={pages.patients} pageSize={pageSize} total={byPatient.length}
+                onPageChange={(p) => setPage("patients", p)} onPageSizeChange={setPageSize} />
+            )}
           </Card>
         </TabsContent>
 
         <TabsContent value="general" className="mt-4">
           <Card className="divide-y">
             {realized.length === 0 && <div className="p-6 text-sm text-muted-foreground text-center">Nenhuma sessão no mês.</div>}
-            {realized.map((a) => {
+            {paginate(realized, pages.general, pageSize).map((a) => {
               const pay = a.payment?.[0];
               const isPaid = !!pay?.paid_at;
               const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
@@ -443,9 +474,14 @@ const Financeiro = () => {
                     {isPaid ? (
                       <Button variant="ghost" size="sm" onClick={() => removePay(pay.id)}>Estornar</Button>
                     ) : isScheduled ? (
-                      <Button size="sm" onClick={() => openReceiptDialog(pay)}>
-                        <Check className="h-4 w-4" /> Recebi
-                      </Button>
+                      <>
+                        <Button size="sm" onClick={() => openReceiptDialog(pay)}>
+                          <Check className="h-4 w-4" /> Recebi
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Excluir lançamento financeiro" onClick={() => removePay(pay.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
                     ) : (
                       <>
                         {a.patient?.phone && (
@@ -462,9 +498,43 @@ const Financeiro = () => {
                 </div>
               );
             })}
+            {realized.length > 0 && (
+              <PaginationControls page={pages.general} pageSize={pageSize} total={realized.length}
+                onPageChange={(p) => setPage("general", p)} onPageSizeChange={setPageSize} />
+            )}
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* AlertDialog: confirmar exclusão de lançamento financeiro (payment) */}
+      <AlertDialog open={!!confirmDeletePay} onOpenChange={(o) => !o && setConfirmDeletePay(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento financeiro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O pagamento vinculado a este agendamento será removido. O agendamento em si será mantido. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={doRemovePay}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog: confirmar exclusão de lançamento manual */}
+      <AlertDialog open={!!confirmDeleteEntry} onOpenChange={(o) => !o && setConfirmDeleteEntry(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>O lançamento manual será removido. Esta ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={doRemoveEntry}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog: registrar pagamento */}
       <Dialog open={!!payDialog} onOpenChange={(o) => !o && setPayDialog(null)}>
