@@ -658,7 +658,7 @@ const Stat = ({ label, value, tone }: { label: string; value: string; tone?: "su
 const statusLabel = (s: string) =>
   ({ scheduled: "Agendada", done: "Realizada", canceled: "Cancelada", no_show: "Faltou" }[s] ?? s);
 
-const ReceivableRow = ({ a, openPay, openReceiptDialog }: { a: any; openPay: (a: any) => void; openReceiptDialog: (p: any) => void }) => {
+const ReceivableRow = ({ a, openPay, openReceiptDialog, removePay }: { a: any; openPay: (a: any) => void; openReceiptDialog: (p: any) => void; removePay: (paymentId: string) => void }) => {
   const pay = a.payment?.[0];
   const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
   return (
@@ -687,6 +687,11 @@ const ReceivableRow = ({ a, openPay, openReceiptDialog }: { a: any; openPay: (a:
         {isScheduled
           ? <Button size="sm" onClick={() => openReceiptDialog(pay)}><Check className="h-4 w-4" /> Recebi</Button>
           : <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>}
+        {pay && (
+          <Button variant="ghost" size="icon" title="Excluir lançamento financeiro" onClick={() => removePay(pay.id)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );
