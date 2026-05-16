@@ -415,19 +415,22 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       }
 
       if (inserted && !isBlock) {
-        for (const row of inserted) {
-          const result = await syncCalendar("create", row.id, {
-            starts_at: row.starts_at,
-            ends_at: row.ends_at,
-            patient_id: parsed.data.patient_id,
-          });
-          if (result?.event_id) {
-            await supabase.from("appointments").update({
-              google_event_id: result.event_id,
-              meet_link: result.meet_link ?? null,
-            }).eq("id", row.id);
+        // Fire-and-forget — não bloqueia o fechamento do diálogo
+        void (async () => {
+          for (const row of inserted) {
+            const result = await syncCalendar("create", row.id, {
+              starts_at: row.starts_at,
+              ends_at: row.ends_at,
+              patient_id: parsed.data.patient_id,
+            });
+            if (result?.event_id) {
+              await supabase.from("appointments").update({
+                google_event_id: result.event_id,
+                meet_link: result.meet_link ?? null,
+              }).eq("id", row.id);
+            }
           }
-        }
+        })();
       }
 
       if (inserted && inserted.length && !isBlock && !isVittude) {
