@@ -8,9 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock, Video, DollarSign } from "lucide-react";
+import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
 type Props = {
@@ -322,23 +325,26 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         if (existing) await supabase.from("payments").delete().eq("id", existing.id);
       }
 
+      // Fire-and-forget Google sync — não bloqueia UI
       if (!isBlock) {
-        const result = await syncCalendar(
-          appointment.google_event_id ? "update" : "create",
-          appointment.id,
-          {
-            starts_at: start.toISOString(),
-            ends_at: end.toISOString(),
-            patient_id: parsed.data.patient_id,
-            google_event_id: appointment.google_event_id,
-          },
-        );
-        if (result?.event_id) {
-          await supabase.from("appointments").update({
-            google_event_id: result.event_id,
-            meet_link: result.meet_link ?? null,
-          }).eq("id", appointment.id);
-        }
+        void (async () => {
+          const result = await syncCalendar(
+            appointment.google_event_id ? "update" : "create",
+            appointment.id,
+            {
+              starts_at: start.toISOString(),
+              ends_at: end.toISOString(),
+              patient_id: parsed.data.patient_id,
+              google_event_id: appointment.google_event_id,
+            },
+          );
+          if (result?.event_id) {
+            await supabase.from("appointments").update({
+              google_event_id: result.event_id,
+              meet_link: result.meet_link ?? null,
+            }).eq("id", appointment.id);
+          }
+        })();
       }
 
       setSaving(false);
@@ -409,19 +415,22 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       }
 
       if (inserted && !isBlock) {
-        for (const row of inserted) {
-          const result = await syncCalendar("create", row.id, {
-            starts_at: row.starts_at,
-            ends_at: row.ends_at,
-            patient_id: parsed.data.patient_id,
-          });
-          if (result?.event_id) {
-            await supabase.from("appointments").update({
-              google_event_id: result.event_id,
-              meet_link: result.meet_link ?? null,
-            }).eq("id", row.id);
+        // Fire-and-forget — não bloqueia o fechamento do diálogo
+        void (async () => {
+          for (const row of inserted) {
+            const result = await syncCalendar("create", row.id, {
+              starts_at: row.starts_at,
+              ends_at: row.ends_at,
+              patient_id: parsed.data.patient_id,
+            });
+            if (result?.event_id) {
+              await supabase.from("appointments").update({
+                google_event_id: result.event_id,
+                meet_link: result.meet_link ?? null,
+              }).eq("id", row.id);
+            }
           }
-        }
+        })();
       }
 
       if (inserted && inserted.length && !isBlock && !isVittude) {
@@ -553,12 +562,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             </Field>
           ) : (
             <Field label="Paciente *">
-              <Select value={form.patient_id} onValueChange={onPatientChange}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {patients.map((p) => <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <PatientCombobox patients={patients} value={form.patient_id} onChange={onPatientChange} />
             </Field>
           )}
           <div className="grid grid-cols-2 gap-3">
@@ -786,3 +790,40 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
     {children}
   </div>
 );
+
+const PatientCombobox = ({ patients, value, onChange }: { patients: any[]; value: string; onChange: (id: string) => void }) => {
+  const [open, setOpen] = useState(false);
+  const selected = patients.find((p) => p.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
+          <span className={cn("truncate", !selected && "text-muted-foreground")}>
+            {selected ? selected.full_name : "Buscar paciente..."}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+        <Command>
+          <CommandInput placeholder="Digite para buscar..." />
+          <CommandList>
+            <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
+            <CommandGroup>
+              {patients.map((p) => (
+                <CommandItem
+                  key={p.id}
+                  value={p.full_name}
+                  onSelect={() => { onChange(p.id); setOpen(false); }}
+                >
+                  <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
+                  {p.full_name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};

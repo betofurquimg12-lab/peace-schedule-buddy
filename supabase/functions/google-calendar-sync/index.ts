@@ -97,15 +97,16 @@ Deno.serve(async (req) => {
       if (p.full_name) patientByName.set(p.full_name.trim().toLowerCase(), p.id);
     }
 
+    // All Google-imported events are treated as Vittude (per business rule).
+    // Strip common Vittude prefixes to extract a clean patient name.
     const parseVittude = (summary: string | null | undefined) => {
-      const s = summary ?? '';
-      if (!/vittude/i.test(s)) return { isVittude: false, cleanName: s };
+      const s = (summary ?? '').trim();
       let name = s.replace(/^vittude\s*-\s*consulta\s*virtual\s*com\s*/i, '').trim();
-      if (!name || /vittude/i.test(name)) {
+      if (!name || /^vittude$/i.test(name)) {
         const m = s.match(/com\s+(.+)$/i);
         name = m ? m[1].trim() : s.replace(/vittude/ig, '').replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim();
       }
-      return { isVittude: true, cleanName: name || 'Paciente Vittude' };
+      return { isVittude: true, cleanName: name || s || 'Paciente Vittude' };
     };
 
     for (const ev of items) {
