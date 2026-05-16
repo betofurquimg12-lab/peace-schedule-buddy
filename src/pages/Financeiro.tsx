@@ -186,10 +186,13 @@ const Financeiro = () => {
     void load();
   };
 
-  const removePay = async (paymentId: string) => {
-    if (!confirm("Remover este pagamento?")) return;
-    const { error } = await supabase.from("payments").delete().eq("id", paymentId);
+  const removePay = (paymentId: string) => setConfirmDeletePay({ id: paymentId });
+  const doRemovePay = async () => {
+    if (!confirmDeletePay) return;
+    const { error } = await supabase.from("payments").delete().eq("id", confirmDeletePay.id);
+    setConfirmDeletePay(null);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Lançamento financeiro excluído" });
     void load();
   };
 
