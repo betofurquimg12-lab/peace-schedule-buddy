@@ -529,7 +529,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               Para alterar ou excluir, edite no próprio Google Calendar — o sistema sincroniza automaticamente em até 5 minutos.
             </p>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="destructive" onClick={remove}>Excluir</Button>
             <Button onClick={() => onOpenChange(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
