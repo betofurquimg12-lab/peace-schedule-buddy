@@ -47,7 +47,7 @@ const PatientDetail = () => {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl">{patient.full_name}</h1>
-          <p className="text-sm text-muted-foreground">{[patient.phone, patient.email].filter(Boolean).join(" · ")}</p>
+          <p className="text-sm text-muted-foreground">{[patient.cpf && `CPF: ${patient.cpf}`, patient.phone, patient.email].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="flex gap-2">
           {patient.phone && (

@@ -32,6 +32,7 @@ type Settings = {
   reminder_popup_minutes: number;
   reminder_app_enabled: boolean;
   reminder_app_minutes: number;
+  email_on_appointment_changes: boolean;
 };
 
 const DEFAULTS: Settings = {
@@ -47,6 +48,7 @@ const DEFAULTS: Settings = {
   reminder_popup_minutes: 5,
   reminder_app_enabled: true,
   reminder_app_minutes: 5,
+  email_on_appointment_changes: true,
 };
 
 export const AgendaSettingsCard = () => {
@@ -78,6 +80,7 @@ export const AgendaSettingsCard = () => {
           reminder_popup_minutes: data.reminder_popup_minutes ?? 5,
           reminder_app_enabled: data.reminder_app_enabled ?? true,
           reminder_app_minutes: data.reminder_app_minutes ?? 5,
+          email_on_appointment_changes: (data as any).email_on_appointment_changes ?? true,
         });
       }
       setLoading(false);
@@ -111,6 +114,7 @@ export const AgendaSettingsCard = () => {
         reminder_popup_minutes: s.reminder_popup_minutes,
         reminder_app_enabled: s.reminder_app_enabled,
         reminder_app_minutes: s.reminder_app_minutes,
+        email_on_appointment_changes: s.email_on_appointment_changes,
       },
       { onConflict: "owner_id" },
     );
@@ -213,6 +217,19 @@ export const AgendaSettingsCard = () => {
             As mudanças nos lembretes do Google se aplicam a novos agendamentos. Edite uma sessão existente
             e salve novamente para reaplicar lá também.
           </p>
+
+          <div className="flex items-start gap-4 rounded-lg border p-3">
+            <Switch
+              checked={s.email_on_appointment_changes}
+              onCheckedChange={(v) => set("email_on_appointment_changes", v)}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium">E-mails de criação, alteração e cancelamento</div>
+              <div className="text-xs text-muted-foreground">
+                Quando ativado, o paciente recebe um e-mail sempre que uma sessão for criada, alterada ou cancelada.
+              </div>
+            </div>
+          </div>
         </div>
 
         <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar configurações"}</Button>

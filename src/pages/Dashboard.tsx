@@ -171,8 +171,8 @@ const Dashboard = () => {
                   <div className="min-w-0 flex-1 pr-3">
                     <div className="font-medium truncate flex items-center gap-2">
                       <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
-                      {a.source === "google" && !a.patient && (
-                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Google</Badge>
+                      {a.is_vittude && (
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Vittude</Badge>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">{formatDateTimeBR(a.starts_at)}</div>

@@ -15,6 +15,7 @@ const schema = z
     full_name: z.string().trim().min(2, "Informe o nome").max(120),
     phone: z.string().trim().max(30).optional().or(z.literal("")),
     email: z.string().trim().email("E-mail inválido").max(255).optional().or(z.literal("")),
+    cpf: z.string().trim().max(20).optional().or(z.literal("")),
     birth_date: z.string().optional().or(z.literal("")),
     address: z.string().trim().max(255).optional().or(z.literal("")),
     city: z.string().trim().max(120).optional().or(z.literal("")),
@@ -45,6 +46,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     full_name: "",
     phone: "",
     email: "",
+    cpf: "",
     birth_date: "",
     address: "",
     city: "",
@@ -64,6 +66,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
         full_name: patient.full_name ?? "",
         phone: patient.phone ?? "",
         email: patient.email ?? "",
+        cpf: patient.cpf ?? "",
         birth_date: patient.birth_date ?? "",
         address: patient.address ?? "",
         city: patient.city ?? "",
@@ -78,7 +81,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       });
     } else {
       setForm({
-        full_name: "", phone: "", email: "", birth_date: "", address: "",
+        full_name: "", phone: "", email: "", cpf: "", birth_date: "", address: "",
         city: "", state: "", country: "Brasil",
         responsible_name: "", responsible_phone: "", default_session_price: 0,
         main_complaint: "", history: "", notes: "",
@@ -99,6 +102,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       full_name: parsed.data.full_name,
       phone: parsed.data.phone || null,
       email: parsed.data.email || null,
+      cpf: parsed.data.cpf || null,
       birth_date: parsed.data.birth_date || null,
       address: parsed.data.address || null,
       city: parsed.data.city || null,
@@ -147,9 +151,10 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
               <Field label="E-mail"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
+              <Field label="CPF"><Input value={form.cpf} onChange={(e) => set("cpf", e.target.value)} placeholder="000.000.000-00" /></Field>
               <Field label="Data de nascimento"><Input type="date" value={form.birth_date} onChange={(e) => set("birth_date", e.target.value)} /></Field>
-              <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
             </div>
+            <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
             <Field label="Endereço"><Input value={form.address} onChange={(e) => set("address", e.target.value)} /></Field>
             <div className="grid sm:grid-cols-3 gap-3">
               <Field label="Cidade"><Input value={form.city} onChange={(e) => set("city", e.target.value)} /></Field>
