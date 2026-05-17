@@ -66,6 +66,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
         full_name: patient.full_name ?? "",
         phone: patient.phone ?? "",
         email: patient.email ?? "",
+        cpf: patient.cpf ?? "",
         birth_date: patient.birth_date ?? "",
         address: patient.address ?? "",
         city: patient.city ?? "",
@@ -80,7 +81,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       });
     } else {
       setForm({
-        full_name: "", phone: "", email: "", birth_date: "", address: "",
+        full_name: "", phone: "", email: "", cpf: "", birth_date: "", address: "",
         city: "", state: "", country: "Brasil",
         responsible_name: "", responsible_phone: "", default_session_price: 0,
         main_complaint: "", history: "", notes: "",
