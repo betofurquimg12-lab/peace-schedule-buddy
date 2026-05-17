@@ -15,6 +15,7 @@ const schema = z
     full_name: z.string().trim().min(2, "Informe o nome").max(120),
     phone: z.string().trim().max(30).optional().or(z.literal("")),
     email: z.string().trim().email("E-mail inválido").max(255).optional().or(z.literal("")),
+    cpf: z.string().trim().max(20).optional().or(z.literal("")),
     birth_date: z.string().optional().or(z.literal("")),
     address: z.string().trim().max(255).optional().or(z.literal("")),
     city: z.string().trim().max(120).optional().or(z.literal("")),
