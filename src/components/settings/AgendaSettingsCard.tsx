@@ -32,6 +32,7 @@ type Settings = {
   reminder_popup_minutes: number;
   reminder_app_enabled: boolean;
   reminder_app_minutes: number;
+  email_on_appointment_changes: boolean;
 };
 
 const DEFAULTS: Settings = {
@@ -47,6 +48,7 @@ const DEFAULTS: Settings = {
   reminder_popup_minutes: 5,
   reminder_app_enabled: true,
   reminder_app_minutes: 5,
+  email_on_appointment_changes: true,
 };
 
 export const AgendaSettingsCard = () => {
