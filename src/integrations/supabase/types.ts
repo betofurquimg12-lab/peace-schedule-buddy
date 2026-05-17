@@ -17,6 +17,7 @@ export type Database = {
       agenda_settings: {
         Row: {
           created_at: string
+          email_on_appointment_changes: boolean
           end_time: string
           google_sync_email: string | null
           google_sync_enabled: boolean
@@ -37,6 +38,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_on_appointment_changes?: boolean
           end_time?: string
           google_sync_email?: string | null
           google_sync_enabled?: boolean
@@ -57,6 +59,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_on_appointment_changes?: boolean
           end_time?: string
           google_sync_email?: string | null
           google_sync_enabled?: boolean
@@ -373,6 +376,7 @@ export type Database = {
           birth_date: string | null
           city: string | null
           country: string | null
+          cpf: string | null
           created_at: string
           created_by: string | null
           default_session_price: number
@@ -394,6 +398,7 @@ export type Database = {
           birth_date?: string | null
           city?: string | null
           country?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string | null
           default_session_price?: number
@@ -415,6 +420,7 @@ export type Database = {
           birth_date?: string | null
           city?: string | null
           country?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string | null
           default_session_price?: number
