@@ -151,9 +151,10 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
               <Field label="E-mail"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
+              <Field label="CPF"><Input value={form.cpf} onChange={(e) => set("cpf", e.target.value)} placeholder="000.000.000-00" /></Field>
               <Field label="Data de nascimento"><Input type="date" value={form.birth_date} onChange={(e) => set("birth_date", e.target.value)} /></Field>
-              <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
             </div>
+            <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
             <Field label="Endereço"><Input value={form.address} onChange={(e) => set("address", e.target.value)} /></Field>
             <div className="grid sm:grid-cols-3 gap-3">
               <Field label="Cidade"><Input value={form.city} onChange={(e) => set("city", e.target.value)} /></Field>
