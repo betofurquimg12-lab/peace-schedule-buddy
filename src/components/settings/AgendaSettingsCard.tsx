@@ -114,6 +114,7 @@ export const AgendaSettingsCard = () => {
         reminder_popup_minutes: s.reminder_popup_minutes,
         reminder_app_enabled: s.reminder_app_enabled,
         reminder_app_minutes: s.reminder_app_minutes,
+        email_on_appointment_changes: s.email_on_appointment_changes,
       },
       { onConflict: "owner_id" },
     );
