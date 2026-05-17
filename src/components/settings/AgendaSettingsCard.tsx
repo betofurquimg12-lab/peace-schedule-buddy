@@ -80,6 +80,7 @@ export const AgendaSettingsCard = () => {
           reminder_popup_minutes: data.reminder_popup_minutes ?? 5,
           reminder_app_enabled: data.reminder_app_enabled ?? true,
           reminder_app_minutes: data.reminder_app_minutes ?? 5,
+          email_on_appointment_changes: (data as any).email_on_appointment_changes ?? true,
         });
       }
       setLoading(false);
