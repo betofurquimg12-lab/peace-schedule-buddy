@@ -46,6 +46,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     full_name: "",
     phone: "",
     email: "",
+    cpf: "",
     birth_date: "",
     address: "",
     city: "",
