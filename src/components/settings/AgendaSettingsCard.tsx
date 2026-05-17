@@ -217,6 +217,19 @@ export const AgendaSettingsCard = () => {
             As mudanças nos lembretes do Google se aplicam a novos agendamentos. Edite uma sessão existente
             e salve novamente para reaplicar lá também.
           </p>
+
+          <div className="flex items-start gap-4 rounded-lg border p-3">
+            <Switch
+              checked={s.email_on_appointment_changes}
+              onCheckedChange={(v) => set("email_on_appointment_changes", v)}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium">E-mails de criação, alteração e cancelamento</div>
+              <div className="text-xs text-muted-foreground">
+                Quando ativado, o paciente recebe um e-mail sempre que uma sessão for criada, alterada ou cancelada.
+              </div>
+            </div>
+          </div>
         </div>
 
         <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar configurações"}</Button>
