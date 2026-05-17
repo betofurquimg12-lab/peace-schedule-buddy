@@ -102,6 +102,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       full_name: parsed.data.full_name,
       phone: parsed.data.phone || null,
       email: parsed.data.email || null,
+      cpf: parsed.data.cpf || null,
       birth_date: parsed.data.birth_date || null,
       address: parsed.data.address || null,
       city: parsed.data.city || null,
