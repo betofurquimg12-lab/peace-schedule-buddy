@@ -534,6 +534,22 @@ const Financeiro = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* AlertDialog: confirmar exclusão de agendamento */}
+      <AlertDialog open={!!confirmDeleteAppt} onOpenChange={(o) => !o && setConfirmDeleteAppt(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O agendamento será removido permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={doRemoveAppointment}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* AlertDialog: confirmar exclusão de lançamento manual */}
       <AlertDialog open={!!confirmDeleteEntry} onOpenChange={(o) => !o && setConfirmDeleteEntry(null)}>
         <AlertDialogContent>
