@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     let response: Response;
     if (body.action === 'create') {
       response = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all`,
+        `${GATEWAY_URL}/calendars/primary/events?conferenceDataVersion=1&sendUpdates=${sendUpdates}`,
         { method: 'POST', headers, body: JSON.stringify(eventPayload) },
       );
     } else {
