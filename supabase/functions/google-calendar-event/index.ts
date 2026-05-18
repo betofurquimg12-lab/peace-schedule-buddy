@@ -52,12 +52,13 @@ Deno.serve(async (req) => {
     // Check if Google Calendar sync is enabled in agenda_settings
     const { data: syncSettings } = await supabase
       .from('agenda_settings')
-      .select('google_sync_enabled')
+      .select('google_sync_enabled, email_on_appointment_changes')
       .limit(1)
       .maybeSingle();
     if (syncSettings && syncSettings.google_sync_enabled === false) {
       return json({ ok: true, skipped: true, event_id: null, meet_link: null, html_link: null });
     }
+    const sendUpdates = (syncSettings?.email_on_appointment_changes ?? true) ? 'all' : 'none';
 
     const headers = {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
     if (body.action === 'delete') {
       if (!body.google_event_id) return json({ error: 'google_event_id required' }, 400);
       const r = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?sendUpdates=all`,
+        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?sendUpdates=${sendUpdates}`,
         { method: 'DELETE', headers },
       );
       if (!r.ok && r.status !== 410 && r.status !== 404) {
@@ -118,14 +119,14 @@ Deno.serve(async (req) => {
     let response: Response;
     if (body.action === 'create') {
       response = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all`,
+        `${GATEWAY_URL}/calendars/primary/events?conferenceDataVersion=1&sendUpdates=${sendUpdates}`,
         { method: 'POST', headers, body: JSON.stringify(eventPayload) },
       );
     } else {
       // update
       if (!body.google_event_id) return json({ error: 'google_event_id required for update' }, 400);
       response = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?conferenceDataVersion=1&sendUpdates=all`,
+        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?conferenceDataVersion=1&sendUpdates=${sendUpdates}`,
         { method: 'PATCH', headers, body: JSON.stringify(eventPayload) },
       );
     }
