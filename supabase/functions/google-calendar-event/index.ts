@@ -52,12 +52,13 @@ Deno.serve(async (req) => {
     // Check if Google Calendar sync is enabled in agenda_settings
     const { data: syncSettings } = await supabase
       .from('agenda_settings')
-      .select('google_sync_enabled')
+      .select('google_sync_enabled, email_on_appointment_changes')
       .limit(1)
       .maybeSingle();
     if (syncSettings && syncSettings.google_sync_enabled === false) {
       return json({ ok: true, skipped: true, event_id: null, meet_link: null, html_link: null });
     }
+    const sendUpdates = (syncSettings?.email_on_appointment_changes ?? true) ? 'all' : 'none';
 
     const headers = {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
