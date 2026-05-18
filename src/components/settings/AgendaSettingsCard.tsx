@@ -224,9 +224,9 @@ export const AgendaSettingsCard = () => {
               onCheckedChange={(v) => set("email_on_appointment_changes", v)}
             />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">E-mails de criação, alteração e cancelamento</div>
+              <div className="text-sm font-medium">E-mails do Google Calendar ao criar, alterar ou cancelar</div>
               <div className="text-xs text-muted-foreground">
-                Quando ativado, o paciente recebe um e-mail sempre que uma sessão for criada, alterada ou cancelada.
+                Quando ativado, o Google envia automaticamente ao paciente (convidado do evento) os e-mails de novo convite, atualização e cancelamento. Quando desativado, nenhum e-mail é enviado pelo Google nessas ações.
               </div>
             </div>
           </div>
