@@ -309,7 +309,7 @@ const Financeiro = () => {
               <div className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</div>
             )}
             {paginate(aReceberAll, pages.receivable, pageSize).map((a) => (
-              <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} />
+              <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} />
             ))}
             {aReceberAll.length > 0 && (
               <PaginationControls page={pages.receivable} pageSize={pageSize} total={aReceberAll.length}
@@ -353,7 +353,7 @@ const Financeiro = () => {
                       <div className="text-sm font-semibold text-warning">{formatBRL(r.subtotal)}</div>
                     </div>
                   ) : (
-                    <ReceivableRow key={r.key} a={r.a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} />
+                    <ReceivableRow key={r.key} a={r.a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} />
                   ))}
                   <PaginationControls page={pages.receivable_month} pageSize={pageSize} total={flat.length}
                     onPageChange={(p) => setPage("receivable_month", p)} onPageSizeChange={setPageSize} />
