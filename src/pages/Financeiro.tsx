@@ -48,6 +48,7 @@ const Financeiro = () => {
 
   // Delete confirmation dialogs
   const [confirmDeletePay, setConfirmDeletePay] = useState<{ id: string } | null>(null);
+  const [confirmDeleteAppt, setConfirmDeleteAppt] = useState<{ id: string } | null>(null);
   const [confirmDeleteEntry, setConfirmDeleteEntry] = useState<{ id: string } | null>(null);
 
   const range = useMemo(() => {
