@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     if (body.action === 'delete') {
       if (!body.google_event_id) return json({ error: 'google_event_id required' }, 400);
       const r = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?sendUpdates=all`,
+        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?sendUpdates=${sendUpdates}`,
         { method: 'DELETE', headers },
       );
       if (!r.ok && r.status !== 410 && r.status !== 404) {
