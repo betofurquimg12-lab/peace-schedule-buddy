@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       // update
       if (!body.google_event_id) return json({ error: 'google_event_id required for update' }, 400);
       response = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?conferenceDataVersion=1&sendUpdates=all`,
+        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?conferenceDataVersion=1&sendUpdates=${sendUpdates}`,
         { method: 'PATCH', headers, body: JSON.stringify(eventPayload) },
       );
     }
