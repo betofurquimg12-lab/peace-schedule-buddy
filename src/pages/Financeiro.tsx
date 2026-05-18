@@ -197,6 +197,17 @@ const Financeiro = () => {
     void load();
   };
 
+  const removeAppointment = (appointmentId: string) => setConfirmDeleteAppt({ id: appointmentId });
+  const doRemoveAppointment = async () => {
+    if (!confirmDeleteAppt) return;
+    await supabase.from("payments").delete().eq("appointment_id", confirmDeleteAppt.id);
+    const { error } = await supabase.from("appointments").delete().eq("id", confirmDeleteAppt.id);
+    setConfirmDeleteAppt(null);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    toast({ title: "Agendamento excluído" });
+    void load();
+  };
+
   const openNewEntry = (type: "credit" | "debit") => {
     setEntryForm({
       type,
