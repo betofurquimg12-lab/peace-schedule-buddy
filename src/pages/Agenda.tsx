@@ -274,8 +274,8 @@ const Agenda = () => {
                 const isToday = sameDay(d, new Date());
                 const isNowCell = isToday && isCurrentHour;
                 return (
-                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 min-w-0 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
-                    {slotAppts.map((a) => {
+                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 min-w-0 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} style={{ minHeight: 56 }} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
+                    {slotAppts.map((a, idx) => {
                       const ext = a.source === "google" && !a.is_vittude;
                       const isBlock = !!a.is_block;
                       const isVittude = !!a.is_vittude;
@@ -287,11 +287,21 @@ const Agenda = () => {
                         : ext
                           ? "bg-muted text-muted-foreground border border-dashed"
                           : "bg-primary/15 hover:bg-primary/25 text-primary";
+                      const HOUR_PX = 56;
+                      const startDt = new Date(a.starts_at);
+                      const endDt = new Date(a.ends_at);
+                      const durMin = Math.max(15, Math.round((+endDt - +startDt) / 60000));
+                      const topPx = (startDt.getMinutes() / 60) * HOUR_PX;
+                      const heightPx = Math.max(24, (durMin / 60) * HOUR_PX - 2);
                       return (
-                        <div key={a.id} className="relative mb-1">
+                        <div
+                          key={a.id}
+                          className="absolute left-1 right-1 z-10 pointer-events-auto"
+                          style={{ top: topPx + (idx * 2), height: heightPx }}
+                        >
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
-                            className={`block w-full text-left rounded-md px-2 py-1 pr-14 text-xs ${btnClass}`}
+                            className={`block w-full h-full text-left rounded-md px-2 py-1 pr-14 text-xs overflow-hidden ${btnClass}`}
                           >
                             <div className="font-medium truncate flex items-center gap-1">
                               {ext && <span>🔒</span>}
@@ -299,7 +309,7 @@ const Agenda = () => {
                               {isVittude && <Badge variant="secondary" className="text-[9px] py-0 px-1 leading-tight">Vittude</Badge>}
                               {isBlock && <Badge variant="outline" className="text-[9px] py-0 px-1 leading-tight border-background/40 text-background">Bloqueado</Badge>}
                             </div>
-                            <div className="opacity-80">{hm(a.starts_at)}</div>
+                            <div className="opacity-80">{hm(a.starts_at)} – {hm(a.ends_at)}</div>
                           </button>
                           <div className="absolute top-1 right-1 flex items-center gap-0.5">
                             {!ext && !isBlock && a.patient?.phone && (
@@ -344,6 +354,7 @@ const Agenda = () => {
                       );
                     })}
                   </div>
+
                 );
               })}
             </div>
