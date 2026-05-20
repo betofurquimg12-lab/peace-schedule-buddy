@@ -1,32 +1,31 @@
-## Problema
+## Parte 1 — Agenda: WhatsApp em eventos do Google
 
-Hoje a grade semanal da Agenda (desktop) renderiza cada evento dentro de um único slot fixo de 1 hora, mostrando apenas o horário de início. Eventos do Google Calendar (e do sistema) com duração diferente de 50 min — por exemplo 1h30, 2h — aparecem visualmente do mesmo tamanho que uma sessão padrão, dando a impressão errada de horário livre logo abaixo.
+Hoje os botões de WhatsApp (lembrete e cobrança) só aparecem para eventos do sistema (`!ext && !isBlock && a.patient?.phone`). Vou:
 
-A duração real já vem correta do banco (`duration_minutes`, `starts_at`, `ends_at`), o problema é puramente de renderização.
+1. **Mostrar os ícones** de WhatsApp (lembrete e cobrança) também em eventos vindos do Google (`source === "google"` e `!is_block` e `!is_vittude`), tanto no grid desktop quanto na lista mobile.
+2. **Novo diálogo "Enviar WhatsApp"** (`WhatsAppExternalDialog`) acionado quando o evento não tem paciente vinculado:
+   - Opção A: selecionar um paciente cadastrado (autocomplete por nome).
+   - Opção B: informar manualmente nome + telefone (formato BR).
+   - Campo de valor (default = `price` do evento, editável; usado na cobrança).
+   - Botão "Enviar lembrete" e "Cobrar" no rodapé do diálogo.
+3. **Vincular paciente ao evento**: se o usuário escolher um paciente cadastrado, ao confirmar o sistema faz `update appointments set patient_id = ?` para que o lançamento passe a aparecer vinculado ao paciente no financeiro e nas próximas interações.
+4. Reaproveita `buildSessionWaUrlAsync` / `buildChargeWaUrlAsync` passando os dados informados.
 
-## Mudanças propostas
+Eventos do Google que já tiverem `patient_id` (caso raro) seguem o fluxo direto, sem diálogo.
 
-Apenas em `src/pages/Agenda.tsx` (frontend / visual):
+## Parte 2 — Financeiro: aba "Pagos"
 
-1. **Grade desktop com altura proporcional à duração**
-   - Cada linha de hora tem altura fixa (`min-h-[56px]`). Vou tratar essa altura como `HOUR_PX = 56` e posicionar os eventos absolutamente dentro da célula da hora de início, com:
-     - `top = (minutosDoInício % 60) / 60 * HOUR_PX`
-     - `height = duration_minutes / 60 * HOUR_PX` (mínimo ~24px para legibilidade)
-   - Assim um evento de 1h30 às 14:00 ocupa visualmente da linha 14:00 até a metade da linha 15:00, e o restante da linha 15:00 continua clicável para criar novo evento.
+1. Nova aba **"Pagos"** em `Financeiro.tsx`, entre "A receber (Mês)" e "Vittude".
+2. Query: `payments` com `paid_at` não nulo, dentro do mês selecionado (filtro `paid_at >= range.start` e `< range.end`), incluindo `appointment(starts_at, patient.full_name)`, ordenados por `paid_at desc`.
+3. Também incluir `finance_entries` do tipo `credit` no mês (lançamentos manuais já pagos), mesclados pela `entry_date` para mostrar o "recebido" completo.
+4. **Totalizador no topo da listagem**: card com "Total recebido no mês" = soma dos `payments.amount` pagos no mês + créditos manuais.
+5. Linhas mostram: data de pagamento, paciente/descrição, método, valor, e botão de excluir (mesma `removePay` / `removeEntry` existentes).
+6. Paginação com a estrutura `pages` existente (nova chave `paid`).
 
-2. **Exibir intervalo início–fim no bloco**
-   - Trocar `{hm(a.starts_at)}` por `{hm(a.starts_at)} – {hm(a.ends_at)}` no card do evento, igual já é feito na visão mobile (linha 186). Isso deixa explícita a duração real para o usuário.
+## Arquivos a alterar
 
-3. **Mobile (lista por dia)**
-   - Já mostra `hm(starts_at) – hm(ends_at)`. Nenhuma mudança necessária.
+- `src/pages/Agenda.tsx` — mostrar ícones WA em eventos Google; abrir novo diálogo quando faltar paciente.
+- `src/components/agenda/WhatsAppExternalDialog.tsx` — **novo** componente (busca paciente, input manual, valor, envio).
+- `src/pages/Financeiro.tsx` — nova aba "Pagos", nova query, totalizador, paginação.
 
-## Fora de escopo
-
-- Sync com Google: a função `google-calendar-sync` já calcula `duration_minutes` corretamente a partir de `start.dateTime`/`end.dateTime`, não precisa mudar.
-- Banco de dados / migrations: nenhuma mudança.
-- Lógica de criação/edição de eventos: nenhuma mudança.
-
-## Detalhes técnicos
-
-- O filtro `slotAppts` continua usando `dt.getHours() === h` (a célula da hora de início "hospeda" o evento), mas o card passa a usar `position: absolute` com `top`/`height` calculados, e a célula recebe `position: relative` e overflow visível controlado. Eventos que atravessam várias horas aparecerão por cima das células seguintes sem bloquear o clique nas linhas livres (uso `pointer-events-auto` só no card).
-- Quando há múltiplos eventos começando na mesma hora (raro mas possível), eles continuam empilhados verticalmente como hoje dentro do espaço de 1h — mantenho o comportamento atual para não regressar nada.
+Sem mudanças de banco de dados nem de edge functions.

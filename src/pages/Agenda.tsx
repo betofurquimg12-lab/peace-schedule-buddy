@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
+import { WhatsAppExternalDialog } from "@/components/agenda/WhatsAppExternalDialog";
 import { formatBRL } from "@/lib/format";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ const Agenda = () => {
   const [editing, setEditing] = useState<any>(null);
   const [presetSlot, setPresetSlot] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [waDialog, setWaDialog] = useState<any>(null);
   const [settings, setSettings] = useState<{ weekdays: number[]; startHour: number; endHour: number }>({
     weekdays: [1, 2, 3, 4, 5],
     startHour: 7,
@@ -101,6 +103,14 @@ const Agenda = () => {
   const onSlot = (day: Date, hour: number) => {
     const d = new Date(day); d.setHours(hour, 0, 0, 0);
     setPresetSlot(d); setEditing(null); setOpen(true);
+  };
+
+  const handleWa = (a: any, kind: "reminder" | "charge") => {
+    if (a.patient?.phone) {
+      void openWaForAppointment(a, kind);
+    } else {
+      setWaDialog(a);
+    }
   };
 
   const weekStart = refDate;
@@ -186,11 +196,11 @@ const Agenda = () => {
                             <div className={`text-xs ${isBlock ? "text-background/70" : "text-muted-foreground"}`}>{hm(a.starts_at)} – {hm(a.ends_at)}</div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {!ext && !isBlock && a.patient?.phone && (
+                            {!isBlock && (
                               <>
                                 <button
                                   type="button"
-                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "reminder"); }}
+                                  onClick={(e) => { e.stopPropagation(); handleWa(a, "reminder"); }}
                                   className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
                                   aria-label="Enviar lembrete pelo WhatsApp"
                                   title="Enviar lembrete pelo WhatsApp"
@@ -200,7 +210,7 @@ const Agenda = () => {
                                 {!isVittude && (
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
+                                    onClick={(e) => { e.stopPropagation(); handleWa(a, "charge"); }}
                                     className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
                                     aria-label="Cobrar pelo WhatsApp"
                                     title="Cobrar pelo WhatsApp"
@@ -312,11 +322,11 @@ const Agenda = () => {
                             <div className="opacity-80">{hm(a.starts_at)} – {hm(a.ends_at)}</div>
                           </button>
                           <div className="absolute top-1 right-1 flex items-center gap-0.5">
-                            {!ext && !isBlock && a.patient?.phone && (
+                            {!isBlock && (
                               <>
                                 <button
                                   type="button"
-                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "reminder"); }}
+                                  onClick={(e) => { e.stopPropagation(); handleWa(a, "reminder"); }}
                                   className="inline-flex h-5 w-5 items-center justify-center rounded text-emerald-600 hover:bg-emerald-50"
                                   aria-label="Enviar lembrete pelo WhatsApp"
                                   title="Enviar lembrete pelo WhatsApp"
@@ -326,7 +336,7 @@ const Agenda = () => {
                                 {!isVittude && (
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
+                                    onClick={(e) => { e.stopPropagation(); handleWa(a, "charge"); }}
                                     className="inline-flex h-5 w-5 items-center justify-center rounded text-amber-600 hover:bg-amber-50"
                                     aria-label="Cobrar pelo WhatsApp"
                                     title="Cobrar pelo WhatsApp"
@@ -369,6 +379,12 @@ const Agenda = () => {
         onSaved={load}
         appointment={editing}
         presetStart={presetSlot}
+      />
+      <WhatsAppExternalDialog
+        open={!!waDialog}
+        onOpenChange={(o) => !o && setWaDialog(null)}
+        appointment={waDialog}
+        onLinked={load}
       />
     </>
   );

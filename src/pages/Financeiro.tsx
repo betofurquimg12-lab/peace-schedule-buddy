@@ -26,6 +26,7 @@ const Financeiro = () => {
   const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
   const [aReceberAll, setAReceberAll] = useState<any[]>([]);
   const [vittudeAll, setVittudeAll] = useState<any[]>([]);
+  const [paidMonth, setPaidMonth] = useState<any[]>([]);
   const [payDialog, setPayDialog] = useState<any>(null);
   const [payForm, setPayForm] = useState({ amount: 0, paid_at: new Date().toISOString().slice(0,10), method: "pix" });
   const [receiptDialog, setReceiptDialog] = useState<any>(null);
@@ -43,7 +44,7 @@ const Financeiro = () => {
 
   // Pagination per tab
   const [pageSize, setPageSize] = useState(10);
-  const [pages, setPages] = useState({ receivable: 1, receivable_month: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
+  const [pages, setPages] = useState({ receivable: 1, receivable_month: 1, paid: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
   const setPage = (k: keyof typeof pages, p: number) => setPages((s) => ({ ...s, [k]: p }));
 
   // Delete confirmation dialogs
@@ -58,7 +59,9 @@ const Financeiro = () => {
   }, [month]);
 
   const load = async () => {
-    const [a, e, upcoming, allPending, vit] = await Promise.all([
+    const startDate = range.start.toISOString().slice(0, 10);
+    const endDate = range.end.toISOString().slice(0, 10);
+    const [a, e, upcoming, allPending, vit, paid] = await Promise.all([
       supabase
         .from("appointments")
         .select("id, starts_at, price, status, source, is_block, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
@@ -69,8 +72,8 @@ const Financeiro = () => {
       supabase
         .from("finance_entries")
         .select("id, type, description, amount, entry_date, method, notes")
-        .gte("entry_date", range.start.toISOString().slice(0, 10))
-        .lt("entry_date", range.end.toISOString().slice(0, 10))
+        .gte("entry_date", startDate)
+        .lt("entry_date", endDate)
         .order("entry_date", { ascending: false }),
       supabase
         .from("payments")
@@ -92,6 +95,13 @@ const Financeiro = () => {
         .select("id, starts_at, status, external_summary, patient:patients(id, full_name)")
         .eq("is_vittude", true)
         .order("starts_at", { ascending: false }),
+      // Pagos no mês
+      supabase
+        .from("payments")
+        .select("id, amount, paid_at, method, notes, appointment:appointments(id, starts_at, patient:patients(id, full_name))")
+        .gte("paid_at", startDate)
+        .lt("paid_at", endDate)
+        .order("paid_at", { ascending: false }),
     ]);
     const normalize = (rows: any[]) => rows.map((row: any) => ({
       ...row,
@@ -105,6 +115,7 @@ const Financeiro = () => {
     );
     setAReceberAll(pendingOnly);
     setVittudeAll(vit.data ?? []);
+    setPaidMonth(paid.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
 
@@ -297,6 +308,7 @@ const Financeiro = () => {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="receivable">A receber</TabsTrigger>
           <TabsTrigger value="receivable_month">A receber (Mês)</TabsTrigger>
+          <TabsTrigger value="paid">Pagos</TabsTrigger>
           <TabsTrigger value="vittude">Vittude</TabsTrigger>
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
@@ -362,6 +374,50 @@ const Financeiro = () => {
             );
           })()}
         </TabsContent>
+
+        <TabsContent value="paid" className="mt-4">
+          {(() => {
+            const totalPaid = paidMonth.reduce((s, p) => s + Number(p.amount || 0), 0);
+            return (
+              <>
+                <Card className="p-4 mb-3 flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">Total recebido no mês</div>
+                  <div className="text-xl font-semibold text-success">{formatBRL(totalPaid)}</div>
+                </Card>
+                <Card className="divide-y">
+                  {paidMonth.length === 0 && (
+                    <div className="p-6 text-sm text-muted-foreground text-center">Nenhum pagamento recebido neste mês.</div>
+                  )}
+                  {paginate(paidMonth, pages.paid, pageSize).map((p: any) => (
+                    <div key={p.id} className="p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">
+                          {p.appointment?.patient?.full_name ?? "Sem paciente"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Pago em {formatDateBR(p.paid_at)}
+                          {p.appointment?.starts_at ? ` · Sessão ${formatDateBR(p.appointment.starts_at)}` : ""}
+                          {p.method ? ` · ${p.method}` : ""}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-semibold text-success">{formatBRL(Number(p.amount))}</div>
+                        <Button variant="ghost" size="icon" title="Excluir pagamento" onClick={() => removePay(p.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {paidMonth.length > 0 && (
+                    <PaginationControls page={pages.paid} pageSize={pageSize} total={paidMonth.length}
+                      onPageChange={(p) => setPage("paid", p)} onPageSizeChange={setPageSize} />
+                  )}
+                </Card>
+              </>
+            );
+          })()}
+        </TabsContent>
+
 
         <TabsContent value="vittude" className="mt-4">
           <Card className="divide-y">
