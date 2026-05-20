@@ -42,6 +42,7 @@ const Agenda = () => {
   const [editing, setEditing] = useState<any>(null);
   const [presetSlot, setPresetSlot] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [waDialog, setWaDialog] = useState<any>(null);
   const [settings, setSettings] = useState<{ weekdays: number[]; startHour: number; endHour: number }>({
     weekdays: [1, 2, 3, 4, 5],
     startHour: 7,
