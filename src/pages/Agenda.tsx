@@ -196,11 +196,11 @@ const Agenda = () => {
                             <div className={`text-xs ${isBlock ? "text-background/70" : "text-muted-foreground"}`}>{hm(a.starts_at)} – {hm(a.ends_at)}</div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {!ext && !isBlock && a.patient?.phone && (
+                            {!isBlock && (
                               <>
                                 <button
                                   type="button"
-                                  onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "reminder"); }}
+                                  onClick={(e) => { e.stopPropagation(); handleWa(a, "reminder"); }}
                                   className="inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
                                   aria-label="Enviar lembrete pelo WhatsApp"
                                   title="Enviar lembrete pelo WhatsApp"
@@ -210,7 +210,7 @@ const Agenda = () => {
                                 {!isVittude && (
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); void openWaForAppointment(a, "charge"); }}
+                                    onClick={(e) => { e.stopPropagation(); handleWa(a, "charge"); }}
                                     className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
                                     aria-label="Cobrar pelo WhatsApp"
                                     title="Cobrar pelo WhatsApp"
