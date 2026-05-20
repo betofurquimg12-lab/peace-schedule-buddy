@@ -83,7 +83,6 @@ const Agenda = () => {
   const load = async () => {
     const start = new Date(refDate); start.setHours(0, 0, 0, 0);
     const end = new Date(refDate); end.setDate(end.getDate() + 7);
-    const end = new Date(refDate); end.setDate(end.getDate() + 7);
     // Auto-mark past scheduled sessions as done before loading
     try { await supabase.rpc("mark_past_appointments_done"); } catch { /* ignore */ }
     const { data } = await supabase
