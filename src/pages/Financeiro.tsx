@@ -375,6 +375,50 @@ const Financeiro = () => {
           })()}
         </TabsContent>
 
+        <TabsContent value="paid" className="mt-4">
+          {(() => {
+            const totalPaid = paidMonth.reduce((s, p) => s + Number(p.amount || 0), 0);
+            return (
+              <>
+                <Card className="p-4 mb-3 flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">Total recebido no mês</div>
+                  <div className="text-xl font-semibold text-success">{formatBRL(totalPaid)}</div>
+                </Card>
+                <Card className="divide-y">
+                  {paidMonth.length === 0 && (
+                    <div className="p-6 text-sm text-muted-foreground text-center">Nenhum pagamento recebido neste mês.</div>
+                  )}
+                  {paginate(paidMonth, pages.paid, pageSize).map((p: any) => (
+                    <div key={p.id} className="p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">
+                          {p.appointment?.patient?.full_name ?? "Sem paciente"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Pago em {formatDateBR(p.paid_at)}
+                          {p.appointment?.starts_at ? ` · Sessão ${formatDateBR(p.appointment.starts_at)}` : ""}
+                          {p.method ? ` · ${p.method}` : ""}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-semibold text-success">{formatBRL(Number(p.amount))}</div>
+                        <Button variant="ghost" size="icon" title="Excluir pagamento" onClick={() => removePay(p.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {paidMonth.length > 0 && (
+                    <PaginationControls page={pages.paid} pageSize={pageSize} total={paidMonth.length}
+                      onPageChange={(p) => setPage("paid", p)} onPageSizeChange={setPageSize} />
+                  )}
+                </Card>
+              </>
+            );
+          })()}
+        </TabsContent>
+
+
         <TabsContent value="vittude" className="mt-4">
           <Card className="divide-y">
             {vittudeAll.length === 0 && (
