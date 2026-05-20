@@ -308,6 +308,7 @@ const Financeiro = () => {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="receivable">A receber</TabsTrigger>
           <TabsTrigger value="receivable_month">A receber (Mês)</TabsTrigger>
+          <TabsTrigger value="paid">Pagos</TabsTrigger>
           <TabsTrigger value="vittude">Vittude</TabsTrigger>
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
