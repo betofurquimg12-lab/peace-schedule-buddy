@@ -59,7 +59,9 @@ const Financeiro = () => {
   }, [month]);
 
   const load = async () => {
-    const [a, e, upcoming, allPending, vit] = await Promise.all([
+    const startDate = range.start.toISOString().slice(0, 10);
+    const endDate = range.end.toISOString().slice(0, 10);
+    const [a, e, upcoming, allPending, vit, paid] = await Promise.all([
       supabase
         .from("appointments")
         .select("id, starts_at, price, status, source, is_block, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
@@ -70,8 +72,8 @@ const Financeiro = () => {
       supabase
         .from("finance_entries")
         .select("id, type, description, amount, entry_date, method, notes")
-        .gte("entry_date", range.start.toISOString().slice(0, 10))
-        .lt("entry_date", range.end.toISOString().slice(0, 10))
+        .gte("entry_date", startDate)
+        .lt("entry_date", endDate)
         .order("entry_date", { ascending: false }),
       supabase
         .from("payments")
@@ -93,6 +95,13 @@ const Financeiro = () => {
         .select("id, starts_at, status, external_summary, patient:patients(id, full_name)")
         .eq("is_vittude", true)
         .order("starts_at", { ascending: false }),
+      // Pagos no mês
+      supabase
+        .from("payments")
+        .select("id, amount, paid_at, method, notes, appointment:appointments(id, starts_at, patient:patients(id, full_name))")
+        .gte("paid_at", startDate)
+        .lt("paid_at", endDate)
+        .order("paid_at", { ascending: false }),
     ]);
     const normalize = (rows: any[]) => rows.map((row: any) => ({
       ...row,
@@ -106,6 +115,7 @@ const Financeiro = () => {
     );
     setAReceberAll(pendingOnly);
     setVittudeAll(vit.data ?? []);
+    setPaidMonth(paid.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
 
