@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
+import { WhatsAppExternalDialog } from "@/components/agenda/WhatsAppExternalDialog";
 import { formatBRL } from "@/lib/format";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 import { Badge } from "@/components/ui/badge";
