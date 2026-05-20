@@ -380,6 +380,12 @@ const Agenda = () => {
         appointment={editing}
         presetStart={presetSlot}
       />
+      <WhatsAppExternalDialog
+        open={!!waDialog}
+        onOpenChange={(o) => !o && setWaDialog(null)}
+        appointment={waDialog}
+        onLinked={load}
+      />
     </>
   );
 };
