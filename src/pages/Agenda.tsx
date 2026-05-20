@@ -105,6 +105,14 @@ const Agenda = () => {
     setPresetSlot(d); setEditing(null); setOpen(true);
   };
 
+  const handleWa = (a: any, kind: "reminder" | "charge") => {
+    if (a.patient?.phone) {
+      void openWaForAppointment(a, kind);
+    } else {
+      setWaDialog(a);
+    }
+  };
+
   const weekStart = refDate;
   const weekEnd = new Date(refDate); weekEnd.setDate(weekEnd.getDate() + 6);
   const fmtRange = `${weekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${weekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
