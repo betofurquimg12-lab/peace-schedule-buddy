@@ -44,7 +44,7 @@ const Financeiro = () => {
 
   // Pagination per tab
   const [pageSize, setPageSize] = useState(10);
-  const [pages, setPages] = useState({ receivable: 1, receivable_month: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
+  const [pages, setPages] = useState({ receivable: 1, receivable_month: 1, paid: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
   const setPage = (k: keyof typeof pages, p: number) => setPages((s) => ({ ...s, [k]: p }));
 
   // Delete confirmation dialogs
