@@ -113,7 +113,7 @@ const Financeiro = () => {
       (r: any) => !r.payment[0] || !r.payment[0].paid_at,
     );
     setAReceberAll(pendingOnly);
-    setVittudeAll(vit.data ?? []);
+    setVittudeAll(normalize(vit.data ?? []));
     setPaidMonth(paid.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
