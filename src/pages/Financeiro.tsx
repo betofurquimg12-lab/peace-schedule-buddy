@@ -81,18 +81,17 @@ const Financeiro = () => {
         .is("paid_at", null)
         .not("due_date", "is", null)
         .order("due_date", { ascending: true }),
-      // A receber (global, sem filtro de mês): appointments não-bloqueio, não-vittude, não-cancelados, sem pagamento ou não pagos
+      // A receber (global, sem filtro de mês): appointments não-bloqueio, não-cancelados, sem pagamento ou não pagos (inclui Vittude)
       supabase
         .from("appointments")
         .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .eq("is_block", false)
-        .eq("is_vittude", false)
         .not("status", "in", "(canceled,no_show)")
         .order("starts_at", { ascending: true }),
-      // Vittude (global)
+      // Vittude (global) — agora com price/payment para permitir marcar pago
       supabase
         .from("appointments")
-        .select("id, starts_at, status, external_summary, patient:patients(id, full_name)")
+        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .eq("is_vittude", true)
         .order("starts_at", { ascending: false }),
       // Pagos no mês
@@ -114,13 +113,13 @@ const Financeiro = () => {
       (r: any) => !r.payment[0] || !r.payment[0].paid_at,
     );
     setAReceberAll(pendingOnly);
-    setVittudeAll(vit.data ?? []);
+    setVittudeAll(normalize(vit.data ?? []));
     setPaidMonth(paid.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
 
-  // Sessões consideradas para o financeiro: todas as não canceladas (realizadas, agendadas, etc.) e não vittude (vai pra aba própria)
-  const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show" && !a.is_vittude);
+  // Sessões consideradas para o financeiro: todas as não canceladas (inclui Vittude na visão geral)
+  const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show");
   const realized = billable; // mantém nome usado abaixo
   const totalDone = billable.reduce((s, a) => s + Number(a.price || 0), 0);
   // Recebido = pagamentos com paid_at preenchido (independe do status da sessão)
@@ -425,16 +424,7 @@ const Financeiro = () => {
               <div className="p-6 text-sm text-muted-foreground text-center">Nenhum atendimento Vittude.</div>
             )}
             {paginate(vittudeAll, pages.vittude, pageSize).map((a) => (
-              <div key={a.id} className="p-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium truncate flex items-center gap-2">
-                    <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
-                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Vittude</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{a.starts_at ? formatDateBR(a.starts_at) : "—"}</div>
-                </div>
-                <Badge variant="secondary" className="capitalize">{statusLabel(a.status)}</Badge>
-              </div>
+              <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} />
             ))}
             {vittudeAll.length > 0 && (
               <PaginationControls page={pages.vittude} pageSize={pageSize} total={vittudeAll.length}

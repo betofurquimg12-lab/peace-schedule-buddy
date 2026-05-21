@@ -572,30 +572,34 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Duração (min)"><Input type="number" value={form.duration} onChange={(e) => set("duration", e.target.value)} /></Field>
-            <Field label="Valor (R$)"><Input type="number" step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
+            {!form.is_block && (
+              <Field label="Valor (R$)"><Input type="number" step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Modalidade">
-              <Select value={form.modality} onValueChange={(v) => set("modality", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in_person">Presencial</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Status">
-              <Select value={form.status} onValueChange={(v) => set("status", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Agendada</SelectItem>
-                  <SelectItem value="done">Realizada</SelectItem>
-                  <SelectItem value="canceled">Cancelada</SelectItem>
-                  <SelectItem value="no_show">Faltou</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
+          {!form.is_block && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Modalidade">
+                <Select value={form.modality} onValueChange={(v) => set("modality", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="in_person">Presencial</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Status">
+                <Select value={form.status} onValueChange={(v) => set("status", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Agendada</SelectItem>
+                    <SelectItem value="done">Realizada</SelectItem>
+                    <SelectItem value="canceled">Cancelada</SelectItem>
+                    <SelectItem value="no_show">Faltou</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+          )}
 
           {(
             <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
@@ -721,7 +725,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               <Video className="h-4 w-4" />
             </Button>
           )}
-          {appointment?.patient?.phone && (
+          {appointment && !form.is_block && (
             <>
               <Button
                 type="button"
@@ -730,9 +734,13 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 className="h-8 w-8"
                 title="WhatsApp"
                 onClick={async () => {
+                  const phone = appointment.patient?.phone;
+                  if (!phone) {
+                    return toast({ title: "Paciente sem telefone cadastrado", variant: "destructive" });
+                  }
                   const url = await buildSessionWaUrlAsync({
-                    phone: appointment.patient.phone,
-                    patientName: appointment.patient.full_name,
+                    phone,
+                    patientName: appointment.patient?.full_name ?? "",
                     startsAt: appointment.starts_at,
                     meetLink: appointment.meet_link,
                     price: Number(appointment.price ?? 0),
@@ -749,9 +757,13 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 className="h-8 w-8"
                 title="Cobrar pelo WhatsApp"
                 onClick={async () => {
+                  const phone = appointment.patient?.phone;
+                  if (!phone) {
+                    return toast({ title: "Paciente sem telefone cadastrado", variant: "destructive" });
+                  }
                   const url = await buildChargeWaUrlAsync({
-                    phone: appointment.patient.phone,
-                    patientName: appointment.patient.full_name,
+                    phone,
+                    patientName: appointment.patient?.full_name ?? "",
                     startsAt: appointment.starts_at,
                     meetLink: appointment.meet_link,
                     price: Number(appointment.price ?? 0),
