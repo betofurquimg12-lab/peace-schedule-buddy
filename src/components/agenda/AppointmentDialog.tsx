@@ -725,7 +725,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               <Video className="h-4 w-4" />
             </Button>
           )}
-          {appointment?.patient?.phone && (
+          {appointment && !form.is_block && (
             <>
               <Button
                 type="button"
@@ -734,9 +734,13 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 className="h-8 w-8"
                 title="WhatsApp"
                 onClick={async () => {
+                  const phone = appointment.patient?.phone;
+                  if (!phone) {
+                    return toast({ title: "Paciente sem telefone cadastrado", variant: "destructive" });
+                  }
                   const url = await buildSessionWaUrlAsync({
-                    phone: appointment.patient.phone,
-                    patientName: appointment.patient.full_name,
+                    phone,
+                    patientName: appointment.patient?.full_name ?? "",
                     startsAt: appointment.starts_at,
                     meetLink: appointment.meet_link,
                     price: Number(appointment.price ?? 0),
@@ -753,9 +757,13 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 className="h-8 w-8"
                 title="Cobrar pelo WhatsApp"
                 onClick={async () => {
+                  const phone = appointment.patient?.phone;
+                  if (!phone) {
+                    return toast({ title: "Paciente sem telefone cadastrado", variant: "destructive" });
+                  }
                   const url = await buildChargeWaUrlAsync({
-                    phone: appointment.patient.phone,
-                    patientName: appointment.patient.full_name,
+                    phone,
+                    patientName: appointment.patient?.full_name ?? "",
                     startsAt: appointment.starts_at,
                     meetLink: appointment.meet_link,
                     price: Number(appointment.price ?? 0),
