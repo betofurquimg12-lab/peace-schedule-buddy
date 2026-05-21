@@ -572,30 +572,34 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Duração (min)"><Input type="number" value={form.duration} onChange={(e) => set("duration", e.target.value)} /></Field>
-            <Field label="Valor (R$)"><Input type="number" step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
+            {!form.is_block && (
+              <Field label="Valor (R$)"><Input type="number" step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Modalidade">
-              <Select value={form.modality} onValueChange={(v) => set("modality", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="in_person">Presencial</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Status">
-              <Select value={form.status} onValueChange={(v) => set("status", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Agendada</SelectItem>
-                  <SelectItem value="done">Realizada</SelectItem>
-                  <SelectItem value="canceled">Cancelada</SelectItem>
-                  <SelectItem value="no_show">Faltou</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
+          {!form.is_block && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Modalidade">
+                <Select value={form.modality} onValueChange={(v) => set("modality", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="in_person">Presencial</SelectItem>
+                    <SelectItem value="online">Online</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Status">
+                <Select value={form.status} onValueChange={(v) => set("status", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Agendada</SelectItem>
+                    <SelectItem value="done">Realizada</SelectItem>
+                    <SelectItem value="canceled">Cancelada</SelectItem>
+                    <SelectItem value="no_show">Faltou</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+          )}
 
           {(
             <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
