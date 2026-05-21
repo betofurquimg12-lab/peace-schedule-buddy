@@ -424,16 +424,7 @@ const Financeiro = () => {
               <div className="p-6 text-sm text-muted-foreground text-center">Nenhum atendimento Vittude.</div>
             )}
             {paginate(vittudeAll, pages.vittude, pageSize).map((a) => (
-              <div key={a.id} className="p-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-medium truncate flex items-center gap-2">
-                    <span className="truncate">{a.patient?.full_name ?? a.external_summary ?? "Sem título"}</span>
-                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal shrink-0">Vittude</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{a.starts_at ? formatDateBR(a.starts_at) : "—"}</div>
-                </div>
-                <Badge variant="secondary" className="capitalize">{statusLabel(a.status)}</Badge>
-              </div>
+              <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} />
             ))}
             {vittudeAll.length > 0 && (
               <PaginationControls page={pages.vittude} pageSize={pageSize} total={vittudeAll.length}
