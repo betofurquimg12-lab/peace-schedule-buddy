@@ -118,8 +118,8 @@ const Financeiro = () => {
   };
   useEffect(() => { void load(); }, [month]);
 
-  // Sessões consideradas para o financeiro: todas as não canceladas (realizadas, agendadas, etc.) e não vittude (vai pra aba própria)
-  const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show" && !a.is_vittude);
+  // Sessões consideradas para o financeiro: todas as não canceladas (inclui Vittude na visão geral)
+  const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show");
   const realized = billable; // mantém nome usado abaixo
   const totalDone = billable.reduce((s, a) => s + Number(a.price || 0), 0);
   // Recebido = pagamentos com paid_at preenchido (independe do status da sessão)
