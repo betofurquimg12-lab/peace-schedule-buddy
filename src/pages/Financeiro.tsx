@@ -81,18 +81,17 @@ const Financeiro = () => {
         .is("paid_at", null)
         .not("due_date", "is", null)
         .order("due_date", { ascending: true }),
-      // A receber (global, sem filtro de mês): appointments não-bloqueio, não-vittude, não-cancelados, sem pagamento ou não pagos
+      // A receber (global, sem filtro de mês): appointments não-bloqueio, não-cancelados, sem pagamento ou não pagos (inclui Vittude)
       supabase
         .from("appointments")
         .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .eq("is_block", false)
-        .eq("is_vittude", false)
         .not("status", "in", "(canceled,no_show)")
         .order("starts_at", { ascending: true }),
-      // Vittude (global)
+      // Vittude (global) — agora com price/payment para permitir marcar pago
       supabase
         .from("appointments")
-        .select("id, starts_at, status, external_summary, patient:patients(id, full_name)")
+        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .eq("is_vittude", true)
         .order("starts_at", { ascending: false }),
       // Pagos no mês
