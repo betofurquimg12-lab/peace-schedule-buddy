@@ -207,17 +207,15 @@ const Agenda = () => {
                                 >
                                   <MessageCircle className="h-4 w-4" />
                                 </button>
-                                {!isVittude && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handleWa(a, "charge"); }}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
-                                    aria-label="Cobrar pelo WhatsApp"
-                                    title="Cobrar pelo WhatsApp"
-                                  >
-                                    <DollarSign className="h-4 w-4" />
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleWa(a, "charge"); }}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 hover:bg-amber-50"
+                                  aria-label="Cobrar pelo WhatsApp"
+                                  title="Cobrar pelo WhatsApp"
+                                >
+                                  <DollarSign className="h-4 w-4" />
+                                </button>
                               </>
                             )}
                             {!ext && !isBlock && a.meet_link && (
@@ -333,17 +331,15 @@ const Agenda = () => {
                                 >
                                   <MessageCircle className="h-3.5 w-3.5" />
                                 </button>
-                                {!isVittude && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handleWa(a, "charge"); }}
-                                    className="inline-flex h-5 w-5 items-center justify-center rounded text-amber-600 hover:bg-amber-50"
-                                    aria-label="Cobrar pelo WhatsApp"
-                                    title="Cobrar pelo WhatsApp"
-                                  >
-                                    <DollarSign className="h-3.5 w-3.5" />
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleWa(a, "charge"); }}
+                                  className="inline-flex h-5 w-5 items-center justify-center rounded text-amber-600 hover:bg-amber-50"
+                                  aria-label="Cobrar pelo WhatsApp"
+                                  title="Cobrar pelo WhatsApp"
+                                >
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                </button>
                               </>
                             )}
                             {!ext && !isBlock && a.meet_link && (

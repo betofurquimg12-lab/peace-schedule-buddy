@@ -110,7 +110,7 @@ const Financeiro = () => {
     setEntries(e.data ?? []);
     setUpcomingPayments(upcoming.data ?? []);
     const pendingOnly = normalize(allPending.data ?? []).filter(
-      (r: any) => !r.payment[0] || !r.payment[0].paid_at,
+      (r: any) => !r.is_vittude && (!r.payment[0] || !r.payment[0].paid_at),
     );
     setAReceberAll(pendingOnly);
     setVittudeAll(normalize(vit.data ?? []));
@@ -141,7 +141,7 @@ const Financeiro = () => {
 
   const byPatient = useMemo(() => {
     const map = new Map<string, { name: string; phone: string | null; sessions: number; total: number; paid: number; scheduled: number }>();
-    realized.forEach((a) => {
+    realized.filter((a) => !a.is_vittude).forEach((a) => {
       const k = a.patient?.id;
       if (!k) return;
       const cur = map.get(k) ?? { name: a.patient.full_name, phone: a.patient.phone, sessions: 0, total: 0, paid: 0, scheduled: 0 };
