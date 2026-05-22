@@ -141,7 +141,7 @@ const Financeiro = () => {
 
   const byPatient = useMemo(() => {
     const map = new Map<string, { name: string; phone: string | null; sessions: number; total: number; paid: number; scheduled: number }>();
-    realized.forEach((a) => {
+    realized.filter((a) => !a.is_vittude).forEach((a) => {
       const k = a.patient?.id;
       if (!k) return;
       const cur = map.get(k) ?? { name: a.patient.full_name, phone: a.patient.phone, sessions: 0, total: 0, paid: 0, scheduled: 0 };
