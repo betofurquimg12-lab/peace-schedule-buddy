@@ -634,6 +634,7 @@ const Financeiro = () => {
                     <SelectItem value="cash">Dinheiro</SelectItem>
                     <SelectItem value="card">Cartão</SelectItem>
                     <SelectItem value="transfer">Transferência</SelectItem>
+                    <SelectItem value="vittude">Vittude</SelectItem>
                     <SelectItem value="other">Outro</SelectItem>
                   </SelectContent>
                 </Select>
