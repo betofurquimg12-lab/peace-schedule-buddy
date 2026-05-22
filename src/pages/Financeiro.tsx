@@ -110,7 +110,7 @@ const Financeiro = () => {
     setEntries(e.data ?? []);
     setUpcomingPayments(upcoming.data ?? []);
     const pendingOnly = normalize(allPending.data ?? []).filter(
-      (r: any) => !r.payment[0] || !r.payment[0].paid_at,
+      (r: any) => !r.is_vittude && (!r.payment[0] || !r.payment[0].paid_at),
     );
     setAReceberAll(pendingOnly);
     setVittudeAll(normalize(vit.data ?? []));
