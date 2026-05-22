@@ -401,6 +401,7 @@ const Financeiro = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-semibold text-success">{formatBRL(Number(p.amount))}</div>
+                        <Button variant="ghost" size="sm" onClick={() => removePay(p.id)}>Estornar</Button>
                         <Button variant="ghost" size="icon" title="Excluir pagamento" onClick={() => removePay(p.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
