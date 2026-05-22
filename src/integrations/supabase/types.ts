@@ -604,7 +604,7 @@ export type Database = {
       appointment_modality: "in_person" | "online"
       appointment_status: "scheduled" | "done" | "canceled" | "no_show"
       finance_entry_type: "credit" | "debit"
-      payment_method: "pix" | "cash" | "card" | "transfer" | "other"
+      payment_method: "pix" | "cash" | "card" | "transfer" | "other" | "vittude"
       recurrence_type: "none" | "weekly" | "biweekly"
     }
     CompositeTypes: {
@@ -737,7 +737,7 @@ export const Constants = {
       appointment_modality: ["in_person", "online"],
       appointment_status: ["scheduled", "done", "canceled", "no_show"],
       finance_entry_type: ["credit", "debit"],
-      payment_method: ["pix", "cash", "card", "transfer", "other"],
+      payment_method: ["pix", "cash", "card", "transfer", "other", "vittude"],
       recurrence_type: ["none", "weekly", "biweekly"],
     },
   },
