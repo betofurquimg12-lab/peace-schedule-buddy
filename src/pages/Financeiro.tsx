@@ -313,6 +313,7 @@ const Financeiro = () => {
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
           <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="receivable" className="mt-4">
