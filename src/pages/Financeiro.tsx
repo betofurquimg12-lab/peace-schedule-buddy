@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
 import { ChevronLeft, ChevronRight, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { FechamentoTab } from "@/components/financeiro/FechamentoTab";
 
 const Financeiro = () => {
   const { user } = useAuth();
