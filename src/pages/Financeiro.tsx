@@ -565,6 +565,10 @@ const Financeiro = () => {
             )}
           </Card>
         </TabsContent>
+
+        <TabsContent value="fechamento" className="mt-4">
+          <FechamentoTab appts={appts} month={month} />
+        </TabsContent>
       </Tabs>
 
       {/* AlertDialog: confirmar exclusão de lançamento financeiro (payment) */}
