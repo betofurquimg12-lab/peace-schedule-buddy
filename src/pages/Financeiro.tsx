@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
 import { ChevronLeft, ChevronRight, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
+import { FechamentoTab } from "@/components/financeiro/FechamentoTab";
 
 const Financeiro = () => {
   const { user } = useAuth();
@@ -312,6 +313,7 @@ const Financeiro = () => {
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
           <TabsTrigger value="general">Geral</TabsTrigger>
+          <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="receivable" className="mt-4">
@@ -562,6 +564,10 @@ const Financeiro = () => {
                 onPageChange={(p) => setPage("general", p)} onPageSizeChange={setPageSize} />
             )}
           </Card>
+        </TabsContent>
+
+        <TabsContent value="fechamento" className="mt-4">
+          <FechamentoTab appts={appts} month={month} />
         </TabsContent>
       </Tabs>
 
