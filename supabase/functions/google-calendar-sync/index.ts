@@ -18,6 +18,29 @@ const GATEWAY_URL = 'https://connector-gateway.lovable.dev/google_calendar/calen
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  // Require an authenticated (non-anon) caller. Allowed: a signed-in clinic
+  // user (role = authenticated) or pg_cron / server-to-server (service_role).
+  // Anon must be rejected because the anon key is public and this function
+  // mutates appointments and reads patient data via the service-role client.
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    return json({ error: 'Unauthorized' }, 401);
+  }
+  try {
+    const [, payloadB64] = token.split('.');
+    const claims = JSON.parse(
+      atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
+    );
+    const role = claims?.role;
+    if (role !== 'authenticated' && role !== 'service_role') {
+      return json({ error: 'Forbidden' }, 403);
+    }
+  } catch {
+    return json({ error: 'Invalid token' }, 401);
+  }
+
+
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const GCAL_API_KEY = Deno.env.get('GOOGLE_CALENDAR_API_KEY');
