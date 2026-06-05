@@ -161,6 +161,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       }));
     }
     setConflict(null);
+    setConvertToParticular(false);
   }, [appointment, presetStart, open]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
