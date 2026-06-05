@@ -680,7 +680,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     <SelectItem value="pending">Em aberto</SelectItem>
                     <SelectItem value="paid">Já pago</SelectItem>
                     <SelectItem value="scheduled_payment">A pagar (com previsão)</SelectItem>
-                    <SelectItem value="vittude">Vittude</SelectItem>
+                    <SelectItem value="vittude">Vittude (gerenciado pela plataforma)</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
