@@ -785,7 +785,17 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               <Field label="Status do pagamento">
                 <Select
                   value={form.payment_status}
-                  onValueChange={(v) => setForm((f: any) => ({ ...f, payment_status: v, is_vittude: v === "vittude" }))}
+                  onValueChange={(v) => {
+                    if (v === "vittude" && existingPayment?.paid_at) {
+                      toast({
+                        title: "Pagamento já realizado",
+                        description: "Este atendimento já possui um pagamento realizado. Estorne o pagamento no módulo Financeiro antes de reclassificá-lo como Vittude.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setForm((f: any) => ({ ...f, payment_status: v, is_vittude: v === "vittude" }));
+                  }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
