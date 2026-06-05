@@ -59,6 +59,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [conflict, setConflict] = useState<string | null>(null);
   const [existingPayment, setExistingPayment] = useState<any>(null);
   const isExternal = appointment?.source === "google";
+  const isEditingVittude = !!appointment?.is_vittude;
   const [form, setForm] = useState<any>({
     patient_id: "",
     date: toLocalDate(new Date()),
