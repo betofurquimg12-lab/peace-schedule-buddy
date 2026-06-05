@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown } from "lucide-react";
+import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
