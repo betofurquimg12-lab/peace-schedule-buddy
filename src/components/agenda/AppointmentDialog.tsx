@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown, Info } from "lucide-react";
+import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
@@ -58,8 +58,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<string | null>(null);
   const [existingPayment, setExistingPayment] = useState<any>(null);
-  const isExternal = appointment?.source === "google" && !appointment?.is_vittude;
-  const isEditingVittude = !!appointment?.is_vittude;
+  const isExternal = appointment?.source === "google";
+  const [convertToParticular, setConvertToParticular] = useState(false);
   const [form, setForm] = useState<any>({
     patient_id: "",
     date: toLocalDate(new Date()),
@@ -161,6 +161,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       }));
     }
     setConflict(null);
+    setConvertToParticular(false);
   }, [appointment, presetStart, open]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
@@ -510,8 +511,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     await removeScoped("one");
   };
 
-  // External event from Google: read-only view
-  if (isExternal) {
+  // External event from Google (non-Vittude): read-only view
+  if (isExternal && !appointment?.is_vittude) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
@@ -539,6 +540,126 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     );
   }
 
+  // Vittude event: simple dialog with optional conversion to particular
+  if (isExternal && appointment?.is_vittude) {
+    return (
+      <Dialog open={open} onOpenChange={(o) => { if (!o) setConvertToParticular(false); onOpenChange(o); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Atendimento Vittude</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm">
+            <div className="font-medium">{appointment.patient?.full_name ?? appointment.external_summary ?? "(Sem título)"}</div>
+            <div className="text-muted-foreground">
+              {formatDateTimeBR(appointment.starts_at)} — {new Date(appointment.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </div>
+
+            <label className="flex items-center gap-2 text-sm rounded-md border p-2 bg-muted/30 cursor-pointer mt-2">
+              <input
+                type="checkbox"
+                checked={convertToParticular}
+                onChange={(e) => {
+                  if (e.target.checked && existingPayment?.paid_at) {
+                    toast({
+                      title: "Pagamento já registrado",
+                      description: "Este atendimento já possui um pagamento registrado. Estorne o pagamento antes de convertê-lo para particular.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setConvertToParticular(e.target.checked);
+                  if (!e.target.checked) {
+                    setForm((f: any) => ({ ...f, patient_id: appointment.patient?.id ?? "", price: Number(appointment.price ?? 0), payment_status: "pending", payment_method: "pix" }));
+                  }
+                }}
+              />
+              <span className="font-medium">Converter para atendimento particular</span>
+            </label>
+
+            {convertToParticular && (
+              <div className="space-y-3 pt-1">
+                <Field label="Paciente *">
+                  <PatientCombobox patients={patients} value={form.patient_id} onChange={onPatientChange} />
+                </Field>
+                <Field label="Valor (R$)">
+                  <Input type="number" step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} />
+                </Field>
+                <Field label="Status do pagamento">
+                  <Select
+                    value={form.payment_status}
+                    onValueChange={(v) => setForm((f: any) => ({ ...f, payment_status: v }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Em aberto</SelectItem>
+                      <SelectItem value="paid">Já pago</SelectItem>
+                      <SelectItem value="scheduled_payment">A pagar (com previsão)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                {form.payment_status !== "pending" && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label={form.payment_status === "paid" ? "Data do pagamento" : "Previsão de pagamento"}>
+                      <Input type="date" value={form.payment_date} onChange={(e) => set("payment_date", e.target.value)} />
+                    </Field>
+                    <Field label="Forma">
+                      <Select value={form.payment_method} onValueChange={(v) => set("payment_method", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pix">Pix</SelectItem>
+                          <SelectItem value="cash">Dinheiro</SelectItem>
+                          <SelectItem value="card">Cartão</SelectItem>
+                          <SelectItem value="transfer">Transferência</SelectItem>
+                          <SelectItem value="other">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="destructive" onClick={remove}>Excluir</Button>
+            {convertToParticular ? (
+              <>
+                <Button variant="outline" onClick={() => { setConvertToParticular(false); onOpenChange(false); }}>Cancelar</Button>
+                <Button onClick={async () => {
+                  if (!form.patient_id) {
+                    toast({ title: "Selecione um paciente", variant: "destructive" });
+                    return;
+                  }
+                  setSaving(true);
+                  const { error } = await supabase.from("appointments").update({
+                    is_vittude: false,
+                    patient_id: form.patient_id,
+                    price: Number(form.price),
+                  }).eq("id", appointment.id);
+                  if (error) {
+                    setSaving(false);
+                    return toast({ title: "Erro", description: error.message, variant: "destructive" });
+                  }
+                  await upsertPayment(appointment.id, Number(form.price));
+                  setSaving(false);
+                  toast({ title: "Atendimento convertido para particular" });
+                  setConvertToParticular(false);
+                  onSaved();
+                  onOpenChange(false);
+                }} disabled={saving}>
+                  {saving ? "Salvando..." : "Salvar como particular"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -558,15 +679,6 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             <span className="text-xs text-muted-foreground">(reservar horário sem paciente)</span>
           </label>
 
-          {isEditingVittude && (
-            <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground flex items-start gap-2">
-              <Info className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>
-                Este atendimento está classificado como Vittude. Para convertê-lo em atendimento particular,
-                altere o status do pagamento abaixo para qualquer opção que não seja 'Vittude'.
-              </span>
-            </div>
-          )}
 
           {form.is_block ? (
             <Field label="Motivo (opcional)">
@@ -673,7 +785,17 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               <Field label="Status do pagamento">
                 <Select
                   value={form.payment_status}
-                  onValueChange={(v) => setForm((f: any) => ({ ...f, payment_status: v, is_vittude: v === "vittude" }))}
+                  onValueChange={(v) => {
+                    if (v === "vittude" && existingPayment?.paid_at) {
+                      toast({
+                        title: "Pagamento já realizado",
+                        description: "Este atendimento já possui um pagamento realizado. Estorne o pagamento no módulo Financeiro antes de reclassificá-lo como Vittude.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setForm((f: any) => ({ ...f, payment_status: v, is_vittude: v === "vittude" }));
+                  }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
