@@ -558,6 +558,16 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             <span className="text-xs text-muted-foreground">(reservar horário sem paciente)</span>
           </label>
 
+          {isEditingVittude && (
+            <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground flex items-start gap-2">
+              <Info className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                Este atendimento está classificado como Vittude. Para convertê-lo em atendimento particular,
+                altere o status do pagamento abaixo para qualquer opção que não seja 'Vittude'.
+              </span>
+            </div>
+          )}
+
           {form.is_block ? (
             <Field label="Motivo (opcional)">
               <Input value={form.block_reason} onChange={(e) => set("block_reason", e.target.value)} placeholder="Ex.: Almoço, supervisão..." />
