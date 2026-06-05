@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown } from "lucide-react";
+import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
@@ -59,6 +59,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [conflict, setConflict] = useState<string | null>(null);
   const [existingPayment, setExistingPayment] = useState<any>(null);
   const isExternal = appointment?.source === "google";
+  const isEditingVittude = !!appointment?.is_vittude;
   const [form, setForm] = useState<any>({
     patient_id: "",
     date: toLocalDate(new Date()),
@@ -557,6 +558,16 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             <span className="text-xs text-muted-foreground">(reservar horário sem paciente)</span>
           </label>
 
+          {isEditingVittude && (
+            <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground flex items-start gap-2">
+              <Info className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                Este atendimento está classificado como Vittude. Para convertê-lo em atendimento particular,
+                altere o status do pagamento abaixo para qualquer opção que não seja 'Vittude'.
+              </span>
+            </div>
+          )}
+
           {form.is_block ? (
             <Field label="Motivo (opcional)">
               <Input value={form.block_reason} onChange={(e) => set("block_reason", e.target.value)} placeholder="Ex.: Almoço, supervisão..." />
@@ -669,7 +680,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     <SelectItem value="pending">Em aberto</SelectItem>
                     <SelectItem value="paid">Já pago</SelectItem>
                     <SelectItem value="scheduled_payment">A pagar (com previsão)</SelectItem>
-                    <SelectItem value="vittude">Vittude</SelectItem>
+                    <SelectItem value="vittude">Vittude (gerenciado pela plataforma)</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
