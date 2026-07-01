@@ -4,6 +4,7 @@ import { Calendar, Users, LayoutDashboard, Wallet, Settings, LogOut } from "luci
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUpcomingSessionAlerts } from "@/hooks/useUpcomingSessionAlerts";
+import { NotificationsBell } from "@/components/notifications/NotificationsBell";
 
 const nav = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
