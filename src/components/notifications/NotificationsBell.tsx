@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
-import { Bell } from "lucide-react";
+import { Bell, ScanSearch } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 type Notification = {
   id: string;
@@ -33,6 +35,22 @@ export const NotificationsBell = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  const runConflictScan = async () => {
+    setScanning(true);
+    try {
+      const { data, error } = await supabase.rpc("check_existing_conflicts" as any);
+      if (error) throw error;
+      const count = Number(data ?? 0);
+      toast.success(count > 0 ? `${count} conflito(s) encontrado(s)` : "Nenhum conflito encontrado");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao verificar conflitos");
+    } finally {
+      setScanning(false);
+    }
+  };
+
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -102,12 +120,26 @@ export const NotificationsBell = () => {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between p-3 border-b">
+        <div className="flex items-center justify-between gap-2 p-3 border-b">
           <div className="text-sm font-semibold">Notificações</div>
-          <Button variant="ghost" size="sm" onClick={markAllRead} disabled={unread === 0} className="h-7 text-xs">
-            Marcar todas como lidas
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={runConflictScan}
+              disabled={scanning}
+              className="h-7 text-xs gap-1"
+              title="Verificar conflitos de agenda"
+            >
+              <ScanSearch className="h-3.5 w-3.5" />
+              {scanning ? "Verificando..." : "Verificar conflitos"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={markAllRead} disabled={unread === 0} className="h-7 text-xs">
+              Marcar todas como lidas
+            </Button>
+          </div>
         </div>
+
         <ScrollArea className="max-h-96">
           {items.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma notificação</div>
