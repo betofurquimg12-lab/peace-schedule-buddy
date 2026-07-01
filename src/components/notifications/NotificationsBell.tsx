@@ -120,10 +120,23 @@ export const NotificationsBell = () => {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between p-3 border-b">
+        <div className="flex items-center justify-between gap-2 p-3 border-b">
           <div className="text-sm font-semibold">Notificações</div>
-          <Button variant="ghost" size="sm" onClick={markAllRead} disabled={unread === 0} className="h-7 text-xs">
-            Marcar todas como lidas
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={runConflictScan}
+              disabled={scanning}
+              className="h-7 text-xs gap-1"
+              title="Verificar conflitos de agenda"
+            >
+              <ScanSearch className="h-3.5 w-3.5" />
+              {scanning ? "Verificando..." : "Verificar conflitos"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={markAllRead} disabled={unread === 0} className="h-7 text-xs">
+              Marcar todas como lidas
+
           </Button>
         </div>
         <ScrollArea className="max-h-96">
