@@ -136,9 +136,10 @@ export const NotificationsBell = () => {
             </Button>
             <Button variant="ghost" size="sm" onClick={markAllRead} disabled={unread === 0} className="h-7 text-xs">
               Marcar todas como lidas
-
-          </Button>
+            </Button>
+          </div>
         </div>
+
         <ScrollArea className="max-h-96">
           {items.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">Nenhuma notificação</div>
