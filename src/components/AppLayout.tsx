@@ -21,11 +21,15 @@ export const AppLayout = () => {
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
       <aside className="md:w-60 md:min-h-screen bg-sidebar text-sidebar-foreground flex md:flex-col border-b md:border-b-0 md:border-r border-sidebar-border">
         <div className="p-4 md:p-6 flex md:block items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-sidebar-primary text-sidebar-primary-foreground inline-flex items-center justify-center font-semibold">C</div>
-          <div className="md:mt-3">
-            <div className="font-semibold leading-tight">Calma</div>
-            <div className="text-[11px] text-sidebar-foreground/70 capitalize">{role === "owner" ? "Psicóloga" : role === "secretary" ? "Secretária" : ""}</div>
+          <div className="flex items-center gap-3 flex-1 md:flex-none">
+            <div className="h-9 w-9 rounded-full bg-sidebar-primary text-sidebar-primary-foreground inline-flex items-center justify-center font-semibold">C</div>
+            <div className="md:mt-3">
+              <div className="font-semibold leading-tight">Calma</div>
+              <div className="text-[11px] text-sidebar-foreground/70 capitalize">{role === "owner" ? "Psicóloga" : role === "secretary" ? "Secretária" : ""}</div>
+            </div>
           </div>
+          <div className="md:hidden ml-auto"><NotificationsBell /></div>
+          <div className="hidden md:block md:mt-3"><NotificationsBell /></div>
         </div>
         <nav className="flex md:flex-col gap-1 px-2 md:px-3 pb-2 md:pb-0 overflow-x-auto md:overflow-visible flex-1">
           {nav.map((n) => (
