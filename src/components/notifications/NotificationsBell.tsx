@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
-import { Bell } from "lucide-react";
+import { Bell, ScanSearch } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 type Notification = {
   id: string;
