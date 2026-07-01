@@ -35,6 +35,22 @@ export const NotificationsBell = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  const runConflictScan = async () => {
+    setScanning(true);
+    try {
+      const { data, error } = await supabase.rpc("check_existing_conflicts" as any);
+      if (error) throw error;
+      const count = Number(data ?? 0);
+      toast.success(count > 0 ? `${count} conflito(s) encontrado(s)` : "Nenhum conflito encontrado");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao verificar conflitos");
+    } finally {
+      setScanning(false);
+    }
+  };
+
 
   const load = useCallback(async () => {
     if (!user) return;
