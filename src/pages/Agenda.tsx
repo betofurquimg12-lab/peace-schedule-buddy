@@ -96,6 +96,29 @@ const Agenda = () => {
   };
   useEffect(() => { void load(); }, [refDate]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const apptId = searchParams.get("appointment");
+    if (!apptId) return;
+    (async () => {
+      const { data } = await supabase
+        .from("appointments")
+        .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, is_block, block_reason, patient:patients(id, full_name, phone)")
+        .eq("id", apptId)
+        .maybeSingle();
+      if (data) {
+        setRefDate(startOfWeek(new Date(data.starts_at)));
+        setEditing(data);
+        setPresetSlot(null);
+        setOpen(true);
+      }
+      const next = new URLSearchParams(searchParams);
+      next.delete("appointment");
+      setSearchParams(next, { replace: true });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
 
   const move = (delta: number) => {
     const d = new Date(refDate); d.setDate(d.getDate() + delta * 7); setRefDate(d);
