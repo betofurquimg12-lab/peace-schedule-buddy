@@ -242,6 +242,7 @@ Deno.serve(async (req) => {
           google_updated_at: ev.updated ?? null,
           meet_link: ev.hangoutLink ?? null,
           last_synced_at: new Date().toISOString(),
+          created_by: ownerId,
         });
         if (insErr) {
           console.error('insert failed', { id: eventId, err: insErr });
