@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       // Find existing row by google_event_id
       const { data: existing } = await supabase
         .from('appointments')
-        .select('id, source, google_etag, is_vittude, patient_id')
+        .select('id, source, google_etag, is_vittude, patient_id, created_by')
         .eq('google_event_id', eventId)
         .maybeSingle();
 
