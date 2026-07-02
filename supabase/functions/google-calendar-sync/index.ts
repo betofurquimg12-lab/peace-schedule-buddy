@@ -215,6 +215,7 @@ Deno.serve(async (req) => {
           last_synced_at: new Date().toISOString(),
           is_vittude: isVittude,
           patient_id: matchedPatient ?? existing.patient_id ?? null,
+          created_by: (existing as any).created_by ?? ownerId,
         }).eq('id', existing.id);
         updated++;
       } else {
