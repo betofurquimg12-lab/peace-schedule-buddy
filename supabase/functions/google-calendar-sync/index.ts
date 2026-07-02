@@ -51,12 +51,14 @@ Deno.serve(async (req) => {
     }
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Respect the global on/off toggle from agenda_settings
+    // Respect the global on/off toggle from agenda_settings, and capture the
+    // owner_id so imported events get a created_by (needed for conflict detection).
     const { data: syncSettings } = await supabase
       .from('agenda_settings')
-      .select('google_sync_enabled')
+      .select('google_sync_enabled, owner_id')
       .limit(1)
       .maybeSingle();
+    const ownerId: string | null = (syncSettings as any)?.owner_id ?? null;
     if (syncSettings && syncSettings.google_sync_enabled === false) {
       return json({ ok: true, skipped: true, reason: 'sync disabled' });
     }
@@ -141,7 +143,7 @@ Deno.serve(async (req) => {
       // Find existing row by google_event_id
       const { data: existing } = await supabase
         .from('appointments')
-        .select('id, source, google_etag, is_vittude, patient_id')
+        .select('id, source, google_etag, is_vittude, patient_id, created_by')
         .eq('google_event_id', eventId)
         .maybeSingle();
 
@@ -213,6 +215,7 @@ Deno.serve(async (req) => {
           last_synced_at: new Date().toISOString(),
           is_vittude: isVittude,
           patient_id: matchedPatient ?? existing.patient_id ?? null,
+          created_by: (existing as any).created_by ?? ownerId,
         }).eq('id', existing.id);
         updated++;
       } else {
@@ -239,6 +242,7 @@ Deno.serve(async (req) => {
           google_updated_at: ev.updated ?? null,
           meet_link: ev.hangoutLink ?? null,
           last_synced_at: new Date().toISOString(),
+          created_by: ownerId,
         });
         if (insErr) {
           console.error('insert failed', { id: eventId, err: insErr });
