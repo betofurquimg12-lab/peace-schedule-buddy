@@ -51,12 +51,14 @@ Deno.serve(async (req) => {
     }
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Respect the global on/off toggle from agenda_settings
+    // Respect the global on/off toggle from agenda_settings, and capture the
+    // owner_id so imported events get a created_by (needed for conflict detection).
     const { data: syncSettings } = await supabase
       .from('agenda_settings')
-      .select('google_sync_enabled')
+      .select('google_sync_enabled, owner_id')
       .limit(1)
       .maybeSingle();
+    const ownerId: string | null = (syncSettings as any)?.owner_id ?? null;
     if (syncSettings && syncSettings.google_sync_enabled === false) {
       return json({ ok: true, skipped: true, reason: 'sync disabled' });
     }
