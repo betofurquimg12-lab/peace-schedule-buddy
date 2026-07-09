@@ -39,7 +39,7 @@ export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLink
     (async () => {
       const { data } = await supabase
         .from("patients")
-        .select("id, full_name, phone")
+        .select("id, full_name, phone, payment_link")
         .eq("active", true)
         .order("full_name");
       setPatients(data ?? []);
