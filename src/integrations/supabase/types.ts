@@ -419,6 +419,7 @@ export type Database = {
           id: string
           main_complaint: string | null
           notes: string | null
+          payment_link: string | null
           phone: string | null
           responsible_name: string | null
           responsible_phone: string | null
@@ -441,6 +442,7 @@ export type Database = {
           id?: string
           main_complaint?: string | null
           notes?: string | null
+          payment_link?: string | null
           phone?: string | null
           responsible_name?: string | null
           responsible_phone?: string | null
@@ -463,6 +465,7 @@ export type Database = {
           id?: string
           main_complaint?: string | null
           notes?: string | null
+          payment_link?: string | null
           phone?: string | null
           responsible_name?: string | null
           responsible_phone?: string | null
