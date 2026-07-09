@@ -99,6 +99,7 @@ export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLink
         startsAt: appointment?.starts_at,
         meetLink: appointment?.meet_link,
         price: Number(price || 0),
+        paymentLink: t.paymentLink,
       };
       const url = kind === "charge"
         ? await buildChargeWaUrlAsync(opts)
