@@ -22,6 +22,7 @@ interface PatientGroup {
   id: string;
   name: string;
   phone: string | null;
+  payment_link: string | null;
   sessions: any[];
 }
 
