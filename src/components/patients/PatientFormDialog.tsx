@@ -122,6 +122,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       responsible_name: parsed.data.responsible_name || null,
       responsible_phone: parsed.data.responsible_phone || null,
       default_session_price: parsed.data.default_session_price,
+      payment_link: parsed.data.payment_link || null,
     };
     if (isOwner) {
       payload.main_complaint = parsed.data.main_complaint || null;
