@@ -64,6 +64,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     responsible_name: "",
     responsible_phone: "",
     default_session_price: 0,
+    payment_link: "",
     main_complaint: "",
     history: "",
     notes: "",
