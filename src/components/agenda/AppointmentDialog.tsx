@@ -900,6 +900,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     startsAt: appointment.starts_at,
                     meetLink: appointment.meet_link,
                     price: Number(appointment.price ?? 0),
+                    paymentLink: appointment.patient?.payment_link ?? null,
                   });
                   window.open(url, "_blank", "noopener,noreferrer");
                 }}
