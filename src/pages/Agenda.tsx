@@ -19,6 +19,7 @@ const openWaForAppointment = async (a: any, kind: "reminder" | "charge") => {
     startsAt: a.starts_at,
     meetLink: a.meet_link,
     price: Number(a.price ?? 0),
+    paymentLink: a.patient?.payment_link ?? null,
   };
   const url =
     kind === "charge"
