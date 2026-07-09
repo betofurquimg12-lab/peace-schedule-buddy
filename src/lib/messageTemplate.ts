@@ -164,4 +164,5 @@ export const AVAILABLE_VARS: { token: string; description: string }[] = [
   { token: "{meet}", description: "Link do Google Meet (vazio se não houver)" },
   { token: "{meet_linha}", description: "Frase pronta com o link, se existir" },
   { token: "{psicologa}", description: "Nome da psicóloga" },
+  { token: "{link_pagamento}", description: "Link de pagamento cadastrado no paciente (vazio se não houver)" },
 ];
