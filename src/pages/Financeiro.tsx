@@ -65,7 +65,7 @@ const Financeiro = () => {
     const [a, e, upcoming, allPending, vit, paid] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, source, is_block, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, source, is_block, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
         .eq("is_block", false)
@@ -85,14 +85,14 @@ const Financeiro = () => {
       // A receber (global, sem filtro de mês): appointments não-bloqueio, não-cancelados, sem pagamento ou não pagos (inclui Vittude)
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .eq("is_block", false)
         .not("status", "in", "(canceled,no_show)")
         .order("starts_at", { ascending: true }),
       // Vittude (global) — agora com price/payment para permitir marcar pago
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .eq("is_vittude", true)
         .order("starts_at", { ascending: false }),
       // Pagos no mês
