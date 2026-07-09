@@ -156,6 +156,13 @@ export const FechamentoTab = ({ appts, month }: Props) => {
       body += `\n\n${pixMatch[0]}`;
     }
 
+    // Se o paciente tem link de pagamento cadastrado, prioriza esse link
+    const link = (g.payment_link ?? "").trim();
+    if (link && !body.includes(link)) {
+      body += `\n\nLink de pagamento: ${link}`;
+    }
+
+
     window.open(buildWaUrl(g.phone, body), "_blank", "noopener,noreferrer");
     setCharged((c) => ({ ...c, [g.id]: new Date().toISOString() }));
   };
