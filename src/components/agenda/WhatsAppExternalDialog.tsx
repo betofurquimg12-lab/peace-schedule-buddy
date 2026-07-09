@@ -15,7 +15,7 @@ interface Props {
   onLinked?: () => void;
 }
 
-type Patient = { id: string; full_name: string; phone: string | null };
+type Patient = { id: string; full_name: string; phone: string | null; payment_link: string | null };
 
 export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLinked }: Props) => {
   const { toast } = useToast();
