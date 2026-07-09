@@ -94,7 +94,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       setForm({
         full_name: "", phone: "", email: "", cpf: "", birth_date: "", address: "",
         city: "", state: "", country: "Brasil",
-        responsible_name: "", responsible_phone: "", default_session_price: 0,
+        responsible_name: "", responsible_phone: "", default_session_price: 0, payment_link: "",
         main_complaint: "", history: "", notes: "",
       });
     }
