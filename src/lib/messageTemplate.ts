@@ -71,6 +71,7 @@ export interface TemplateVars {
   meet_linha?: string;
   psicologa?: string;
   pix?: string;
+  link_pagamento?: string;
 }
 
 export const buildVarsForAppointment = (opts: {
