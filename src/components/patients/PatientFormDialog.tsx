@@ -24,6 +24,15 @@ const schema = z
     responsible_name: z.string().trim().max(120).optional().or(z.literal("")),
     responsible_phone: z.string().trim().max(30).optional().or(z.literal("")),
     default_session_price: z.coerce.number().min(0).max(99999),
+    payment_link: z
+      .string()
+      .trim()
+      .max(500)
+      .optional()
+      .or(z.literal(""))
+      .refine((v) => !v || /^https?:\/\/\S+$/i.test(v), {
+        message: "Informe uma URL começando com http:// ou https://",
+      }),
     main_complaint: z.string().trim().max(2000).optional().or(z.literal("")),
     history: z.string().trim().max(5000).optional().or(z.literal("")),
     notes: z.string().trim().max(5000).optional().or(z.literal("")),
@@ -55,6 +64,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     responsible_name: "",
     responsible_phone: "",
     default_session_price: 0,
+    payment_link: "",
     main_complaint: "",
     history: "",
     notes: "",
@@ -75,6 +85,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
         responsible_name: patient.responsible_name ?? "",
         responsible_phone: patient.responsible_phone ?? "",
         default_session_price: patient.default_session_price ?? 0,
+        payment_link: patient.payment_link ?? "",
         main_complaint: patient.main_complaint ?? "",
         history: patient.history ?? "",
         notes: patient.notes ?? "",
@@ -83,7 +94,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       setForm({
         full_name: "", phone: "", email: "", cpf: "", birth_date: "", address: "",
         city: "", state: "", country: "Brasil",
-        responsible_name: "", responsible_phone: "", default_session_price: 0,
+        responsible_name: "", responsible_phone: "", default_session_price: 0, payment_link: "",
         main_complaint: "", history: "", notes: "",
       });
     }
@@ -111,6 +122,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       responsible_name: parsed.data.responsible_name || null,
       responsible_phone: parsed.data.responsible_phone || null,
       default_session_price: parsed.data.default_session_price,
+      payment_link: parsed.data.payment_link || null,
     };
     if (isOwner) {
       payload.main_complaint = parsed.data.main_complaint || null;
@@ -155,6 +167,15 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
               <Field label="Data de nascimento"><Input type="date" value={form.birth_date} onChange={(e) => set("birth_date", e.target.value)} /></Field>
             </div>
             <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
+            <Field label="Link de pagamento (Pix, boleto, checkout...)">
+              <Input
+                type="url"
+                inputMode="url"
+                placeholder="https://..."
+                value={form.payment_link}
+                onChange={(e) => set("payment_link", e.target.value)}
+              />
+            </Field>
             <Field label="Endereço"><Input value={form.address} onChange={(e) => set("address", e.target.value)} /></Field>
             <div className="grid sm:grid-cols-3 gap-3">
               <Field label="Cidade"><Input value={form.city} onChange={(e) => set("city", e.target.value)} /></Field>

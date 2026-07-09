@@ -22,6 +22,7 @@ interface PatientGroup {
   id: string;
   name: string;
   phone: string | null;
+  payment_link: string | null;
   sessions: any[];
 }
 
@@ -45,6 +46,7 @@ export const FechamentoTab = ({ appts, month }: Props) => {
             id: k,
             name: a.patient.full_name,
             phone: a.patient.phone ?? null,
+            payment_link: a.patient.payment_link ?? null,
             sessions: [] as any[],
           };
         cur.sessions.push(a);
@@ -153,6 +155,13 @@ export const FechamentoTab = ({ appts, month }: Props) => {
     if (pixMatch) {
       body += `\n\n${pixMatch[0]}`;
     }
+
+    // Se o paciente tem link de pagamento cadastrado, prioriza esse link
+    const link = (g.payment_link ?? "").trim();
+    if (link && !body.includes(link)) {
+      body += `\n\nLink de pagamento: ${link}`;
+    }
+
 
     window.open(buildWaUrl(g.phone, body), "_blank", "noopener,noreferrer");
     setCharged((c) => ({ ...c, [g.id]: new Date().toISOString() }));

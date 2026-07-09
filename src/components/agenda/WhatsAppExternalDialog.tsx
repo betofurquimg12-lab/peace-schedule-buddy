@@ -15,7 +15,7 @@ interface Props {
   onLinked?: () => void;
 }
 
-type Patient = { id: string; full_name: string; phone: string | null };
+type Patient = { id: string; full_name: string; phone: string | null; payment_link: string | null };
 
 export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLinked }: Props) => {
   const { toast } = useToast();
@@ -39,7 +39,7 @@ export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLink
     (async () => {
       const { data } = await supabase
         .from("patients")
-        .select("id, full_name, phone")
+        .select("id, full_name, phone, payment_link")
         .eq("active", true)
         .order("full_name");
       setPatients(data ?? []);
@@ -64,7 +64,7 @@ export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLink
         toast({ title: "Paciente sem telefone cadastrado", variant: "destructive" });
         return null;
       }
-      return { name: selectedPatient.full_name, phone: selectedPatient.phone, patientId: selectedPatient.id };
+      return { name: selectedPatient.full_name, phone: selectedPatient.phone, patientId: selectedPatient.id, paymentLink: selectedPatient.payment_link };
     }
     const name = manualName.trim();
     const phone = manualPhone.trim();
@@ -72,7 +72,7 @@ export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLink
       toast({ title: "Informe o telefone", variant: "destructive" });
       return null;
     }
-    return { name: name || "", phone, patientId: null as string | null };
+    return { name: name || "", phone, patientId: null as string | null, paymentLink: null as string | null };
   };
 
   const linkPatientIfNeeded = async (patientId: string | null) => {
@@ -99,6 +99,7 @@ export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLink
         startsAt: appointment?.starts_at,
         meetLink: appointment?.meet_link,
         price: Number(price || 0),
+        paymentLink: t.paymentLink,
       };
       const url = kind === "charge"
         ? await buildChargeWaUrlAsync(opts)

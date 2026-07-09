@@ -71,6 +71,7 @@ export interface TemplateVars {
   meet_linha?: string;
   psicologa?: string;
   pix?: string;
+  link_pagamento?: string;
 }
 
 export const buildVarsForAppointment = (opts: {
@@ -79,6 +80,7 @@ export const buildVarsForAppointment = (opts: {
   price?: number | null;
   meetLink?: string | null;
   psicologaName?: string | null;
+  paymentLink?: string | null;
 }): TemplateVars => {
   const name = opts.patientName ?? "";
   const first = name.split(" ")[0] ?? "";
@@ -110,6 +112,7 @@ export const buildVarsForAppointment = (opts: {
     meet,
     meet_linha: meetLinha,
     psicologa: opts.psicologaName ?? "",
+    link_pagamento: opts.paymentLink ?? "",
   };
 };
 
@@ -161,4 +164,5 @@ export const AVAILABLE_VARS: { token: string; description: string }[] = [
   { token: "{meet}", description: "Link do Google Meet (vazio se não houver)" },
   { token: "{meet_linha}", description: "Frase pronta com o link, se existir" },
   { token: "{psicologa}", description: "Nome da psicóloga" },
+  { token: "{link_pagamento}", description: "Link de pagamento cadastrado no paciente (vazio se não houver)" },
 ];
