@@ -46,6 +46,7 @@ export const FechamentoTab = ({ appts, month }: Props) => {
             id: k,
             name: a.patient.full_name,
             phone: a.patient.phone ?? null,
+            payment_link: a.patient.payment_link ?? null,
             sessions: [] as any[],
           };
         cur.sessions.push(a);
