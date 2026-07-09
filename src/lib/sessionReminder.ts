@@ -10,6 +10,7 @@ interface BaseOpts {
   startsAt: string | Date;
   meetLink?: string | null;
   price?: number | null;
+  paymentLink?: string | null;
 }
 
 const fallbackReminder = (opts: BaseOpts) => {
