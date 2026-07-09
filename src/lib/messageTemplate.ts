@@ -80,6 +80,7 @@ export const buildVarsForAppointment = (opts: {
   price?: number | null;
   meetLink?: string | null;
   psicologaName?: string | null;
+  paymentLink?: string | null;
 }): TemplateVars => {
   const name = opts.patientName ?? "";
   const first = name.split(" ")[0] ?? "";
@@ -111,6 +112,7 @@ export const buildVarsForAppointment = (opts: {
     meet,
     meet_linha: meetLinha,
     psicologa: opts.psicologaName ?? "",
+    link_pagamento: opts.paymentLink ?? "",
   };
 };
 
