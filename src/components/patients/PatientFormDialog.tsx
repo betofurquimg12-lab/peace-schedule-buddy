@@ -24,6 +24,15 @@ const schema = z
     responsible_name: z.string().trim().max(120).optional().or(z.literal("")),
     responsible_phone: z.string().trim().max(30).optional().or(z.literal("")),
     default_session_price: z.coerce.number().min(0).max(99999),
+    payment_link: z
+      .string()
+      .trim()
+      .max(500)
+      .optional()
+      .or(z.literal(""))
+      .refine((v) => !v || /^https?:\/\/\S+$/i.test(v), {
+        message: "Informe uma URL começando com http:// ou https://",
+      }),
     main_complaint: z.string().trim().max(2000).optional().or(z.literal("")),
     history: z.string().trim().max(5000).optional().or(z.literal("")),
     notes: z.string().trim().max(5000).optional().or(z.literal("")),
