@@ -64,7 +64,7 @@ export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLink
         toast({ title: "Paciente sem telefone cadastrado", variant: "destructive" });
         return null;
       }
-      return { name: selectedPatient.full_name, phone: selectedPatient.phone, patientId: selectedPatient.id };
+      return { name: selectedPatient.full_name, phone: selectedPatient.phone, patientId: selectedPatient.id, paymentLink: selectedPatient.payment_link };
     }
     const name = manualName.trim();
     const phone = manualPhone.trim();
