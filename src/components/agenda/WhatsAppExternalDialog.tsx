@@ -72,7 +72,7 @@ export const WhatsAppExternalDialog = ({ open, onOpenChange, appointment, onLink
       toast({ title: "Informe o telefone", variant: "destructive" });
       return null;
     }
-    return { name: name || "", phone, patientId: null as string | null };
+    return { name: name || "", phone, patientId: null as string | null, paymentLink: null as string | null };
   };
 
   const linkPatientIfNeeded = async (patientId: string | null) => {
