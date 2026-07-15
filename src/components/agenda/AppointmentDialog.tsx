@@ -577,6 +577,16 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               <span className="font-medium">Converter para atendimento particular</span>
             </label>
 
+            <Field label="Observações">
+              <Textarea
+                rows={3}
+                value={form.notes}
+                onChange={(e) => set("notes", e.target.value)}
+                placeholder="Anotações sobre este atendimento..."
+              />
+            </Field>
+
+
             {convertToParticular && (
               <div className="space-y-3 pt-1">
                 <Field label="Paciente *">
