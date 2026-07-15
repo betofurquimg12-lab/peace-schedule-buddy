@@ -52,17 +52,17 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}${nextPath}`,
             data: { full_name: name },
           },
         });
         if (error) throw error;
         toast({ title: "Conta criada", description: "Você já pode entrar." });
-        navigate("/");
+        navigate(nextPath);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate("/");
+        navigate(nextPath);
       }
     } catch (err: any) {
       toast({ title: "Erro", description: err.message ?? "Tente novamente", variant: "destructive" });
@@ -74,7 +74,7 @@ const Auth = () => {
   const handleGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: `${window.location.origin}${nextPath}` },
     });
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
   };
