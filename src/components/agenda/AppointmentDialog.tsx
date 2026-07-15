@@ -664,8 +664,22 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 </Button>
               </>
             ) : (
-              <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+              <Button onClick={async () => {
+                setSaving(true);
+                const { error } = await supabase
+                  .from("appointments")
+                  .update({ notes: form.notes || null })
+                  .eq("id", appointment.id);
+                setSaving(false);
+                if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+                toast({ title: "Observações salvas" });
+                onSaved();
+                onOpenChange(false);
+              }} disabled={saving}>
+                {saving ? "Salvando..." : "Salvar"}
+              </Button>
             )}
+
           </DialogFooter>
         </DialogContent>
       </Dialog>
