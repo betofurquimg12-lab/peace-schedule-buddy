@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "sdk_version": "0.22.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://fomqcuntjyffnnvtbixo.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "clinica-mcp",
+      "version": "0.1.0",
+      "title": "Clínica — Agendamento MCP"
+    },
+    "tools": [
+      {
+        "name": "list_patients",
+        "title": "List patients",
+        "description": "List patients accessible to the signed-in clinic user. Optional search by name.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Optional case-insensitive name substring."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Max rows (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_patient",
+        "title": "Get patient",
+        "description": "Fetch full details for a single patient by id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Patient id (uuid)."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_appointments",
+        "title": "List appointments",
+        "description": "List appointments in a date range. Dates are ISO 8601 timestamps.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Start ISO timestamp (inclusive)."
+            },
+            "to": {
+              "type": "string",
+              "description": "End ISO timestamp (exclusive)."
+            },
+            "patient_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Filter by patient id."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_appointment",
+        "title": "Create appointment",
+        "description": "Create a new appointment for a patient.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "patient_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "starts_at": {
+              "type": "string",
+              "description": "ISO timestamp"
+            },
+            "ends_at": {
+              "type": "string",
+              "description": "ISO timestamp"
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "patient_id",
+            "starts_at",
+            "ends_at"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_finance_entries",
+        "title": "List finance entries",
+        "description": "List financial entries in a date range.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Start date ISO (inclusive)."
+            },
+            "to": {
+              "type": "string",
+              "description": "End date ISO (exclusive)."
+            },
+            "status": {
+              "type": "string",
+              "description": "Filter by status (e.g. pago, a_receber)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

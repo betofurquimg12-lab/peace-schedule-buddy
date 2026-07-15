@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
+
+function safeNext(raw: string | null): string {
+  if (!raw) return "/";
+  try {
+    // Only accept same-origin relative paths starting with "/".
+    if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+    return raw;
+  } catch {
+    return "/";
+  }
+}
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,6 +35,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextPath = safeNext(searchParams.get("next"));
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,17 +52,17 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}${nextPath}`,
             data: { full_name: name },
           },
         });
         if (error) throw error;
         toast({ title: "Conta criada", description: "Você já pode entrar." });
-        navigate("/");
+        navigate(nextPath);
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate("/");
+        navigate(nextPath);
       }
     } catch (err: any) {
       toast({ title: "Erro", description: err.message ?? "Tente novamente", variant: "destructive" });
@@ -61,7 +74,7 @@ const Auth = () => {
   const handleGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: `${window.location.origin}${nextPath}` },
     });
     if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
   };
