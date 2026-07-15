@@ -577,6 +577,16 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
               <span className="font-medium">Converter para atendimento particular</span>
             </label>
 
+            <Field label="Observações">
+              <Textarea
+                rows={3}
+                value={form.notes}
+                onChange={(e) => set("notes", e.target.value)}
+                placeholder="Anotações sobre este atendimento..."
+              />
+            </Field>
+
+
             {convertToParticular && (
               <div className="space-y-3 pt-1">
                 <Field label="Paciente *">
@@ -636,7 +646,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     is_vittude: false,
                     patient_id: form.patient_id,
                     price: Number(form.price),
+                    notes: form.notes || null,
                   }).eq("id", appointment.id);
+
                   if (error) {
                     setSaving(false);
                     return toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -652,8 +664,22 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 </Button>
               </>
             ) : (
-              <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+              <Button onClick={async () => {
+                setSaving(true);
+                const { error } = await supabase
+                  .from("appointments")
+                  .update({ notes: form.notes || null })
+                  .eq("id", appointment.id);
+                setSaving(false);
+                if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+                toast({ title: "Observações salvas" });
+                onSaved();
+                onOpenChange(false);
+              }} disabled={saving}>
+                {saving ? "Salvando..." : "Salvar"}
+              </Button>
             )}
+
           </DialogFooter>
         </DialogContent>
       </Dialog>
