@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
+
+function safeNext(raw: string | null): string {
+  if (!raw) return "/";
+  try {
+    // Only accept same-origin relative paths starting with "/".
+    if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+    return raw;
+  } catch {
+    return "/";
+  }
+}
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
