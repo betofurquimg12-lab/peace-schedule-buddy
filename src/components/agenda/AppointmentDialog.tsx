@@ -646,7 +646,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     is_vittude: false,
                     patient_id: form.patient_id,
                     price: Number(form.price),
+                    notes: form.notes || null,
                   }).eq("id", appointment.id);
+
                   if (error) {
                     setSaving(false);
                     return toast({ title: "Erro", description: error.message, variant: "destructive" });
