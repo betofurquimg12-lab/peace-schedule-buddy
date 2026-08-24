@@ -206,6 +206,24 @@ Deno.serve(async (req) => {
           }
           continue;
         }
+        // Converted to particular by the user: app owns the content, Google only owns the timing.
+        if ((existing as any).converted_to_particular === true) {
+          if (existing.google_etag !== ev.etag) {
+            const durC = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
+            await supabase.from('appointments').update({
+              starts_at: startISO,
+              ends_at: endISO,
+              duration_minutes: durC,
+              google_etag: ev.etag ?? null,
+              google_updated_at: ev.updated ?? null,
+              last_synced_at: new Date().toISOString(),
+            }).eq('id', existing.id);
+            updated++;
+          } else {
+            skipped++;
+          }
+          continue;
+        }
         // External event: mirror changes
         if (existing.google_etag === ev.etag) {
           skipped++;
@@ -213,7 +231,7 @@ Deno.serve(async (req) => {
         }
         const dur = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
         const summary = ev.summary ?? '';
-        const { isVittude, cleanName } = parseVittude(summary);
+        const { isVittude, cleanName } = detectVittude(ev);
         const matchedPatient = isVittude ? patientByName.get(cleanName.toLowerCase()) ?? null : null;
         const displaySummary = (isAllDay ? '[dia inteiro] ' : '') + (isVittude ? cleanName : summary);
         await supabase.from('appointments').update({
@@ -226,7 +244,7 @@ Deno.serve(async (req) => {
           google_updated_at: ev.updated ?? null,
           last_synced_at: new Date().toISOString(),
           is_vittude: isVittude,
-          patient_id: matchedPatient ?? existing.patient_id ?? null,
+          patient_id: isVittude ? (matchedPatient ?? existing.patient_id ?? null) : null,
           created_by: (existing as any).created_by ?? ownerId,
         }).eq('id', existing.id);
         updated++;
@@ -234,7 +252,7 @@ Deno.serve(async (req) => {
         // New external event
         const dur = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
         const summary = ev.summary ?? '';
-        const { isVittude, cleanName } = parseVittude(summary);
+        const { isVittude, cleanName } = detectVittude(ev);
         const matchedPatient = isVittude ? patientByName.get(cleanName.toLowerCase()) ?? null : null;
         const displaySummary = (isAllDay ? '[dia inteiro] ' : '') + (isVittude ? cleanName : (summary || '(Evento do Google)'));
         const { error: insErr } = await supabase.from('appointments').insert({
