@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, MessageCircle } from "lucide-react";
+import { Plus, Search, MessageCircle, Pencil } from "lucide-react";
 import { formatBRL, buildWaUrl } from "@/lib/format";
 import { PatientFormDialog } from "@/components/patients/PatientFormDialog";
 
@@ -13,6 +13,7 @@ const Patients = () => {
   const [list, setList] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
 
   const load = async () => {
     const { data } = await supabase
@@ -28,6 +29,12 @@ const Patients = () => {
     (p.phone ?? "").includes(q) ||
     (p.email ?? "").toLowerCase().includes(q.toLowerCase())
   );
+
+  const openEdit = async (id: string) => {
+    const { data, error } = await supabase.from("patients").select("*").eq("id", id).maybeSingle();
+    if (error || !data) return;
+    setEditing(data);
+  };
 
   return (
     <>
@@ -54,6 +61,9 @@ const Patients = () => {
                 {[p.phone, p.email].filter(Boolean).join(" · ")} · Sessão {formatBRL(Number(p.default_session_price))}
               </div>
             </Link>
+            <Button variant="ghost" size="icon" title="Editar" onClick={() => void openEdit(p.id)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
             {p.phone && (
               <Button asChild variant="ghost" size="icon" title="WhatsApp">
                 <a href={buildWaUrl(p.phone)} target="_blank" rel="noopener noreferrer">
@@ -66,6 +76,12 @@ const Patients = () => {
       </div>
 
       <PatientFormDialog open={open} onOpenChange={setOpen} onSaved={load} />
+      <PatientFormDialog
+        open={!!editing}
+        onOpenChange={(o) => { if (!o) setEditing(null); }}
+        onSaved={load}
+        patient={editing ?? undefined}
+      />
     </>
   );
 };
