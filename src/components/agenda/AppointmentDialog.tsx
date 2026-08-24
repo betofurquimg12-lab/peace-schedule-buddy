@@ -626,6 +626,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                   setSaving(true);
                   const { error } = await supabase.from("appointments").update({
                     is_vittude: false,
+                    converted_to_particular: true,
                     patient_id: form.patient_id,
                     price: Number(form.price),
                     notes: form.notes || null,
