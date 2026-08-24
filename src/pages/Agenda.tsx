@@ -89,7 +89,7 @@ const Agenda = () => {
     try { await supabase.rpc("mark_past_appointments_done"); } catch { /* ignore */ }
     const { data } = await supabase
       .from("appointments")
-      .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
+      .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
       .gte("starts_at", start.toISOString())
       .lt("starts_at", end.toISOString())
       .order("starts_at");
@@ -104,7 +104,7 @@ const Agenda = () => {
     (async () => {
       const { data } = await supabase
         .from("appointments")
-        .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
+        .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
         .eq("id", apptId)
         .maybeSingle();
       if (data) {
@@ -197,7 +197,7 @@ const Agenda = () => {
               ) : (
                 <div className="space-y-2">
                   {dayAppts.map((a) => {
-                    const ext = a.source === "google" && !a.is_vittude;
+                    const ext = a.source === "google" && !a.is_vittude && !a.converted_to_particular;
                     const isBlock = !!a.is_block;
                     const isVittude = !!a.is_vittude;
                     const displayName = isBlock
@@ -309,7 +309,7 @@ const Agenda = () => {
                 return (
                   <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 min-w-0 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} style={{ minHeight: 56 }} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
                     {slotAppts.map((a, idx) => {
-                      const ext = a.source === "google" && !a.is_vittude;
+                      const ext = a.source === "google" && !a.is_vittude && !a.converted_to_particular;
                       const isBlock = !!a.is_block;
                       const isVittude = !!a.is_vittude;
                       const displayName = isBlock

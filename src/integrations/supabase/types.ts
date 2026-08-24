@@ -178,6 +178,366 @@ export type Database = {
           },
         ]
       }
+      backup_appointments_20260824: {
+        Row: {
+          block_reason: string | null
+          converted_to_particular: boolean | null
+          created_at: string | null
+          created_by: string | null
+          duration_minutes: number | null
+          ends_at: string | null
+          external_summary: string | null
+          google_etag: string | null
+          google_event_id: string | null
+          google_updated_at: string | null
+          id: string | null
+          is_block: boolean | null
+          is_vittude: boolean | null
+          last_synced_at: string | null
+          meet_link: string | null
+          modality: Database["public"]["Enums"]["appointment_modality"] | null
+          notes: string | null
+          patient_id: string | null
+          price: number | null
+          recurrence: Database["public"]["Enums"]["recurrence_type"] | null
+          recurrence_end_date: string | null
+          recurrence_group_id: string | null
+          reminder_sent_at: string | null
+          source: string | null
+          starts_at: string | null
+          status: Database["public"]["Enums"]["appointment_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          block_reason?: string | null
+          converted_to_particular?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          duration_minutes?: number | null
+          ends_at?: string | null
+          external_summary?: string | null
+          google_etag?: string | null
+          google_event_id?: string | null
+          google_updated_at?: string | null
+          id?: string | null
+          is_block?: boolean | null
+          is_vittude?: boolean | null
+          last_synced_at?: string | null
+          meet_link?: string | null
+          modality?: Database["public"]["Enums"]["appointment_modality"] | null
+          notes?: string | null
+          patient_id?: string | null
+          price?: number | null
+          recurrence?: Database["public"]["Enums"]["recurrence_type"] | null
+          recurrence_end_date?: string | null
+          recurrence_group_id?: string | null
+          reminder_sent_at?: string | null
+          source?: string | null
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["appointment_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          block_reason?: string | null
+          converted_to_particular?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          duration_minutes?: number | null
+          ends_at?: string | null
+          external_summary?: string | null
+          google_etag?: string | null
+          google_event_id?: string | null
+          google_updated_at?: string | null
+          id?: string | null
+          is_block?: boolean | null
+          is_vittude?: boolean | null
+          last_synced_at?: string | null
+          meet_link?: string | null
+          modality?: Database["public"]["Enums"]["appointment_modality"] | null
+          notes?: string | null
+          patient_id?: string | null
+          price?: number | null
+          recurrence?: Database["public"]["Enums"]["recurrence_type"] | null
+          recurrence_end_date?: string | null
+          recurrence_group_id?: string | null
+          reminder_sent_at?: string | null
+          source?: string | null
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["appointment_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      backup_convertidos_20260824: {
+        Row: {
+          block_reason: string | null
+          converted_to_particular: boolean | null
+          created_at: string | null
+          created_by: string | null
+          duration_minutes: number | null
+          ends_at: string | null
+          external_summary: string | null
+          google_etag: string | null
+          google_event_id: string | null
+          google_updated_at: string | null
+          id: string | null
+          is_block: boolean | null
+          is_vittude: boolean | null
+          last_synced_at: string | null
+          meet_link: string | null
+          modality: Database["public"]["Enums"]["appointment_modality"] | null
+          notes: string | null
+          patient_id: string | null
+          price: number | null
+          recurrence: Database["public"]["Enums"]["recurrence_type"] | null
+          recurrence_end_date: string | null
+          recurrence_group_id: string | null
+          reminder_sent_at: string | null
+          source: string | null
+          starts_at: string | null
+          status: Database["public"]["Enums"]["appointment_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          block_reason?: string | null
+          converted_to_particular?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          duration_minutes?: number | null
+          ends_at?: string | null
+          external_summary?: string | null
+          google_etag?: string | null
+          google_event_id?: string | null
+          google_updated_at?: string | null
+          id?: string | null
+          is_block?: boolean | null
+          is_vittude?: boolean | null
+          last_synced_at?: string | null
+          meet_link?: string | null
+          modality?: Database["public"]["Enums"]["appointment_modality"] | null
+          notes?: string | null
+          patient_id?: string | null
+          price?: number | null
+          recurrence?: Database["public"]["Enums"]["recurrence_type"] | null
+          recurrence_end_date?: string | null
+          recurrence_group_id?: string | null
+          reminder_sent_at?: string | null
+          source?: string | null
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["appointment_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          block_reason?: string | null
+          converted_to_particular?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          duration_minutes?: number | null
+          ends_at?: string | null
+          external_summary?: string | null
+          google_etag?: string | null
+          google_event_id?: string | null
+          google_updated_at?: string | null
+          id?: string | null
+          is_block?: boolean | null
+          is_vittude?: boolean | null
+          last_synced_at?: string | null
+          meet_link?: string | null
+          modality?: Database["public"]["Enums"]["appointment_modality"] | null
+          notes?: string | null
+          patient_id?: string | null
+          price?: number | null
+          recurrence?: Database["public"]["Enums"]["recurrence_type"] | null
+          recurrence_end_date?: string | null
+          recurrence_group_id?: string | null
+          reminder_sent_at?: string | null
+          source?: string | null
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["appointment_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      backup_finance_entries_20260824: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          entry_date: string | null
+          id: string | null
+          method: Database["public"]["Enums"]["payment_method"] | null
+          notes: string | null
+          patient_id: string | null
+          type: Database["public"]["Enums"]["finance_entry_type"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          entry_date?: string | null
+          id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          patient_id?: string | null
+          type?: Database["public"]["Enums"]["finance_entry_type"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          entry_date?: string | null
+          id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          patient_id?: string | null
+          type?: Database["public"]["Enums"]["finance_entry_type"] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      backup_notifications_20260824: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_read: boolean | null
+          message: string | null
+          related_appointment_ids: string[] | null
+          title: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          is_read?: boolean | null
+          message?: string | null
+          related_appointment_ids?: string[] | null
+          title?: string | null
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          is_read?: boolean | null
+          message?: string | null
+          related_appointment_ids?: string[] | null
+          title?: string | null
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      backup_notifications2_20260824: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_read: boolean | null
+          message: string | null
+          related_appointment_ids: string[] | null
+          title: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          is_read?: boolean | null
+          message?: string | null
+          related_appointment_ids?: string[] | null
+          title?: string | null
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          is_read?: boolean | null
+          message?: string | null
+          related_appointment_ids?: string[] | null
+          title?: string | null
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      backup_payments_20260824: {
+        Row: {
+          amount: number | null
+          appointment_id: string | null
+          created_at: string | null
+          created_by: string | null
+          due_date: string | null
+          id: string | null
+          method: Database["public"]["Enums"]["payment_method"] | null
+          notes: string | null
+          paid_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          appointment_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          paid_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          appointment_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          paid_at?: string | null
+        }
+        Relationships: []
+      }
+      backup_payments2_20260824: {
+        Row: {
+          amount: number | null
+          appointment_id: string | null
+          created_at: string | null
+          created_by: string | null
+          due_date: string | null
+          id: string | null
+          method: Database["public"]["Enums"]["payment_method"] | null
+          notes: string | null
+          paid_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          appointment_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          paid_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          appointment_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"] | null
+          notes?: string | null
+          paid_at?: string | null
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
