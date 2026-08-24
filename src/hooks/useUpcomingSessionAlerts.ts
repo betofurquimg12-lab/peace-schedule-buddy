@@ -49,7 +49,7 @@ export const useUpcomingSessionAlerts = (enabled: boolean) => {
       const windowEnd = new Date(now.getTime() + (minutesBefore + 1) * 60_000);
       const { data, error } = await supabase
         .from("appointments")
-        .select("id, starts_at, meet_link, source, patient:patients(full_name, phone)")
+        .select("id, starts_at, meet_link, source, converted_to_particular, patient:patients(full_name, phone)")
         .gte("starts_at", now.toISOString())
         .lte("starts_at", windowEnd.toISOString())
         .neq("status", "canceled");
@@ -58,7 +58,7 @@ export const useUpcomingSessionAlerts = (enabled: boolean) => {
       const fired = firedRef.current;
       let changed = false;
       for (const a of data) {
-        if (a.source === "google") continue; // skip external events
+        if (a.source === "google" && !a.converted_to_particular) continue; // skip external events
         const startMs = new Date(a.starts_at).getTime();
         const minsUntil = (startMs - Date.now()) / 60_000;
         if (minsUntil > minutesBefore) continue;
