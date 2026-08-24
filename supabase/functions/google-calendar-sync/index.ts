@@ -122,17 +122,29 @@ Deno.serve(async (req) => {
       if (p.full_name) patientByName.set(p.full_name.trim().toLowerCase(), p.id);
     }
 
-    // All Google-imported events are treated as Vittude (per business rule).
-    // Strip common Vittude prefixes to extract a clean patient name.
-    const parseVittude = (summary: string | null | undefined) => {
-      const s = (summary ?? '').trim();
-      let name = s.replace(/^vittude\s*-\s*consulta\s*virtual\s*com\s*/i, '').trim();
+    // Only events that actually reference Vittude are treated as Vittude sessions.
+    // Personal events keep their original title and never get a patient linked.
+    const detectVittude = (ev: any) => {
+      const summary = (ev.summary ?? '').trim();
+      const description = ev.description ?? '';
+      const organizer = ev.organizer?.email ?? '';
+      const creator = ev.creator?.email ?? '';
+      const isVittude =
+        /vittude/i.test(summary) ||
+        /vittude/i.test(description) ||
+        /vittude/i.test(organizer) ||
+        /vittude/i.test(creator);
+
+      if (!isVittude) return { isVittude: false, cleanName: summary };
+
+      let name = summary.replace(/^vittude\s*-\s*consulta\s*virtual\s*com\s*/i, '').trim();
       if (!name || /^vittude$/i.test(name)) {
-        const m = s.match(/com\s+(.+)$/i);
-        name = m ? m[1].trim() : s.replace(/vittude/ig, '').replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim();
+        const m = summary.match(/com\s+(.+)$/i);
+        name = m ? m[1].trim() : summary.replace(/vittude/ig, '').replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim();
       }
-      return { isVittude: true, cleanName: name || s || 'Paciente Vittude' };
+      return { isVittude: true, cleanName: name || summary || 'Paciente Vittude' };
     };
+
 
     for (const ev of items) {
       if (ev.id) seenEventIds.add(ev.id);
@@ -143,7 +155,7 @@ Deno.serve(async (req) => {
       // Find existing row by google_event_id
       const { data: existing } = await supabase
         .from('appointments')
-        .select('id, source, google_etag, is_vittude, patient_id, created_by')
+        .select('id, source, google_etag, is_vittude, patient_id, created_by, converted_to_particular')
         .eq('google_event_id', eventId)
         .maybeSingle();
 
@@ -194,6 +206,24 @@ Deno.serve(async (req) => {
           }
           continue;
         }
+        // Converted to particular by the user: app owns the content, Google only owns the timing.
+        if ((existing as any).converted_to_particular === true) {
+          if (existing.google_etag !== ev.etag) {
+            const durC = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
+            await supabase.from('appointments').update({
+              starts_at: startISO,
+              ends_at: endISO,
+              duration_minutes: durC,
+              google_etag: ev.etag ?? null,
+              google_updated_at: ev.updated ?? null,
+              last_synced_at: new Date().toISOString(),
+            }).eq('id', existing.id);
+            updated++;
+          } else {
+            skipped++;
+          }
+          continue;
+        }
         // External event: mirror changes
         if (existing.google_etag === ev.etag) {
           skipped++;
@@ -201,7 +231,7 @@ Deno.serve(async (req) => {
         }
         const dur = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
         const summary = ev.summary ?? '';
-        const { isVittude, cleanName } = parseVittude(summary);
+        const { isVittude, cleanName } = detectVittude(ev);
         const matchedPatient = isVittude ? patientByName.get(cleanName.toLowerCase()) ?? null : null;
         const displaySummary = (isAllDay ? '[dia inteiro] ' : '') + (isVittude ? cleanName : summary);
         await supabase.from('appointments').update({
@@ -214,7 +244,7 @@ Deno.serve(async (req) => {
           google_updated_at: ev.updated ?? null,
           last_synced_at: new Date().toISOString(),
           is_vittude: isVittude,
-          patient_id: matchedPatient ?? existing.patient_id ?? null,
+          patient_id: isVittude ? (matchedPatient ?? existing.patient_id ?? null) : null,
           created_by: (existing as any).created_by ?? ownerId,
         }).eq('id', existing.id);
         updated++;
@@ -222,7 +252,7 @@ Deno.serve(async (req) => {
         // New external event
         const dur = Math.max(1, Math.round((+new Date(endISO) - +new Date(startISO)) / 60000));
         const summary = ev.summary ?? '';
-        const { isVittude, cleanName } = parseVittude(summary);
+        const { isVittude, cleanName } = detectVittude(ev);
         const matchedPatient = isVittude ? patientByName.get(cleanName.toLowerCase()) ?? null : null;
         const displaySummary = (isAllDay ? '[dia inteiro] ' : '') + (isVittude ? cleanName : (summary || '(Evento do Google)'));
         const { error: insErr } = await supabase.from('appointments').insert({
