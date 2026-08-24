@@ -122,17 +122,29 @@ Deno.serve(async (req) => {
       if (p.full_name) patientByName.set(p.full_name.trim().toLowerCase(), p.id);
     }
 
-    // All Google-imported events are treated as Vittude (per business rule).
-    // Strip common Vittude prefixes to extract a clean patient name.
-    const parseVittude = (summary: string | null | undefined) => {
-      const s = (summary ?? '').trim();
-      let name = s.replace(/^vittude\s*-\s*consulta\s*virtual\s*com\s*/i, '').trim();
+    // Only events that actually reference Vittude are treated as Vittude sessions.
+    // Personal events keep their original title and never get a patient linked.
+    const detectVittude = (ev: any) => {
+      const summary = (ev.summary ?? '').trim();
+      const description = ev.description ?? '';
+      const organizer = ev.organizer?.email ?? '';
+      const creator = ev.creator?.email ?? '';
+      const isVittude =
+        /vittude/i.test(summary) ||
+        /vittude/i.test(description) ||
+        /vittude/i.test(organizer) ||
+        /vittude/i.test(creator);
+
+      if (!isVittude) return { isVittude: false, cleanName: summary };
+
+      let name = summary.replace(/^vittude\s*-\s*consulta\s*virtual\s*com\s*/i, '').trim();
       if (!name || /^vittude$/i.test(name)) {
-        const m = s.match(/com\s+(.+)$/i);
-        name = m ? m[1].trim() : s.replace(/vittude/ig, '').replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim();
+        const m = summary.match(/com\s+(.+)$/i);
+        name = m ? m[1].trim() : summary.replace(/vittude/ig, '').replace(/^[\s\-:]+|[\s\-:]+$/g, '').trim();
       }
-      return { isVittude: true, cleanName: name || s || 'Paciente Vittude' };
+      return { isVittude: true, cleanName: name || summary || 'Paciente Vittude' };
     };
+
 
     for (const ev of items) {
       if (ev.id) seenEventIds.add(ev.id);
