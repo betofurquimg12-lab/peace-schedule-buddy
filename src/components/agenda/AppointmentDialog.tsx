@@ -511,42 +511,16 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     await removeScoped("one");
   };
 
-  // External event from Google (non-Vittude): read-only view
-  if (isExternal && !appointment?.is_vittude) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="h-4 w-4" /> Evento do Google Calendar
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 text-sm">
-            <div className="font-medium">{appointment.external_summary ?? "(Sem título)"}</div>
-            <div className="text-muted-foreground">
-              {formatDateTimeBR(appointment.starts_at)} — {new Date(appointment.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            </div>
-            <p className="text-xs text-muted-foreground pt-2">
-              Este horário está bloqueado porque foi criado direto no Google Calendar.
-              Para alterar ou excluir, edite no próprio Google Calendar — o sistema sincroniza automaticamente em até 5 minutos.
-            </p>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="destructive" onClick={remove}>Excluir</Button>
-            <Button onClick={() => onOpenChange(false)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Vittude event: simple dialog with optional conversion to particular
-  if (isExternal && appointment?.is_vittude) {
+  // External event from Google (Vittude or personal): unified dialog
+  if (isExternal) {
+    const isVittudeEvent = !!appointment?.is_vittude;
     return (
       <Dialog open={open} onOpenChange={(o) => { if (!o) setConvertToParticular(false); onOpenChange(o); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Atendimento Vittude</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {isVittudeEvent ? "Atendimento Vittude" : (<><Lock className="h-4 w-4" /> Evento do Google Calendar</>)}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3 text-sm">
@@ -554,6 +528,14 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             <div className="text-muted-foreground">
               {formatDateTimeBR(appointment.starts_at)} — {new Date(appointment.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
             </div>
+            {!isVittudeEvent && (
+              <p className="text-xs text-muted-foreground pt-2">
+                Este horário está bloqueado porque foi criado direto no Google Calendar.
+                Para alterar ou excluir, edite no próprio Google Calendar — o sistema sincroniza automaticamente em até 5 minutos.
+              </p>
+            )}
+
+
 
             <label className="flex items-center gap-2 text-sm rounded-md border p-2 bg-muted/30 cursor-pointer mt-2">
               <input
