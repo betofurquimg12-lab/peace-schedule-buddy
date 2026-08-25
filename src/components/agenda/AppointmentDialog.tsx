@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
 import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown } from "lucide-react";
@@ -58,7 +60,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<string | null>(null);
   const [existingPayment, setExistingPayment] = useState<any>(null);
-  const isExternal = appointment?.source === "google";
+  const isExternal = appointment?.source === "google" && !appointment?.converted_to_particular;
+  const isConverted = appointment?.source === "google" && !!appointment?.converted_to_particular;
   const [convertToParticular, setConvertToParticular] = useState(false);
   const [form, setForm] = useState<any>({
     patient_id: "",
@@ -81,6 +84,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     is_vittude: false,
   });
   const [deleteScopeOpen, setDeleteScopeOpen] = useState(false);
+  const [revertOpen, setRevertOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -162,6 +166,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     }
     setConflict(null);
     setConvertToParticular(false);
+    setRevertOpen(false);
   }, [appointment, presetStart, open]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
@@ -283,6 +288,28 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       return toast({ title: "Selecione um paciente", variant: "destructive" });
     }
     setSaving(true);
+
+    if (appointment && isConverted) {
+      const { error } = await supabase.from("appointments").update({
+        patient_id: parsed.data.patient_id || null,
+        price: parsed.data.price,
+        notes: parsed.data.notes || null,
+        status: parsed.data.status,
+      }).eq("id", appointment.id);
+
+      if (error) {
+        setSaving(false);
+        return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      }
+
+      await upsertPayment(appointment.id, parsed.data.price);
+      setSaving(false);
+      toast({ title: "Atendimento atualizado" });
+      onSaved();
+      onOpenChange(false);
+      return;
+    }
+
     const start = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
     const end = new Date(start.getTime() + parsed.data.duration * 60000);
 
@@ -511,6 +538,58 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     await removeScoped("one");
   };
 
+  const openRevertConfirmation = () => {
+    if (existingPayment?.paid_at) {
+      toast({
+        title: "Pagamento já realizado",
+        description: "Este atendimento já possui pagamento realizado. Estorne o pagamento antes de reverter.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setRevertOpen(true);
+  };
+
+  const revertToGoogleEvent = async () => {
+    if (!appointment) return;
+    if (existingPayment?.paid_at) {
+      setRevertOpen(false);
+      toast({
+        title: "Pagamento já realizado",
+        description: "Este atendimento já possui pagamento realizado. Estorne o pagamento antes de reverter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await supabase
+      .from("appointments")
+      .update({ converted_to_particular: false, patient_id: null, price: 0 })
+      .eq("id", appointment.id);
+
+    if (error) {
+      setSaving(false);
+      return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+
+    const { error: paymentError } = await supabase
+      .from("payments")
+      .delete()
+      .eq("appointment_id", appointment.id)
+      .is("paid_at", null);
+
+    setSaving(false);
+    if (paymentError) {
+      return toast({ title: "Erro", description: paymentError.message, variant: "destructive" });
+    }
+
+    toast({ title: "Atendimento revertido para evento do Google" });
+    setRevertOpen(false);
+    onSaved();
+    onOpenChange(false);
+  };
+
   // External event from Google (Vittude or personal): unified dialog
   if (isExternal) {
     const isVittudeEvent = !!appointment?.is_vittude;
@@ -673,20 +752,29 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{appointment ? "Editar consulta" : "Nova consulta"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {isConverted ? (
+              <>
+                Atendimento particular
+                <Badge variant="outline" className="text-[10px]">Google</Badge>
+              </>
+            ) : appointment ? "Editar consulta" : "Nova consulta"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
           {/* Block toggle */}
-          <label className="flex items-center gap-2 text-sm rounded-md border p-2 bg-muted/30 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!!form.is_block}
-              onChange={(e) => set("is_block", e.target.checked)}
-            />
-            <span className="font-medium">Bloqueio de agenda</span>
-            <span className="text-xs text-muted-foreground">(reservar horário sem paciente)</span>
-          </label>
+          {!isConverted && (
+            <label className="flex items-center gap-2 text-sm rounded-md border p-2 bg-muted/30 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!form.is_block}
+                onChange={(e) => set("is_block", e.target.checked)}
+              />
+              <span className="font-medium">Bloqueio de agenda</span>
+              <span className="text-xs text-muted-foreground">(reservar horário sem paciente)</span>
+            </label>
+          )}
 
 
           {form.is_block ? (
@@ -699,15 +787,20 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             </Field>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Data"><Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} /></Field>
-            <Field label="Hora"><Input type="time" value={form.time} onChange={(e) => set("time", e.target.value)} /></Field>
+            <Field label="Data"><Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} disabled={isConverted} /></Field>
+            <Field label="Hora"><Input type="time" value={form.time} onChange={(e) => set("time", e.target.value)} disabled={isConverted} /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Duração (min)"><Input type="number" value={form.duration} onChange={(e) => set("duration", e.target.value)} /></Field>
+            <Field label="Duração (min)"><Input type="number" value={form.duration} onChange={(e) => set("duration", e.target.value)} disabled={isConverted} /></Field>
             {!form.is_block && (
               <Field label="Valor (R$)"><Input type="number" step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} /></Field>
             )}
           </div>
+          {isConverted && (
+            <p className="text-xs text-muted-foreground">
+              Horário controlado pelo Google Calendar. Para alterar, edite no próprio Google Calendar.
+            </p>
+          )}
           {!form.is_block && (
             <div className="grid grid-cols-2 gap-3">
               <Field label="Modalidade">
@@ -733,7 +826,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             </div>
           )}
 
-          {(
+          {!isConverted && (
             <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorrência</div>
               <div className="grid grid-cols-2 gap-3">
@@ -811,7 +904,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     <SelectItem value="pending">Em aberto</SelectItem>
                     <SelectItem value="paid">Já pago</SelectItem>
                     <SelectItem value="scheduled_payment">A pagar (com previsão)</SelectItem>
-                    <SelectItem value="vittude">Vittude (gerenciado pela plataforma)</SelectItem>
+                    {!isConverted && <SelectItem value="vittude">Vittude (gerenciado pela plataforma)</SelectItem>}
                   </SelectContent>
                 </Select>
               </Field>
@@ -853,6 +946,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           {appointment && (
             <Button variant="ghost" size="icon" onClick={remove} className="text-destructive hover:text-destructive mr-auto h-8 w-8" title="Excluir">
               <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          {appointment && isConverted && (
+            <Button type="button" variant="ghost" size="sm" onClick={openRevertConfirmation}>
+              Reverter para evento do Google
             </Button>
           )}
           {appointment?.meet_link && (
@@ -936,6 +1034,23 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={revertOpen} onOpenChange={setRevertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reverter para evento do Google?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O atendimento voltará a ser tratado como evento do Google Calendar. O vínculo com paciente, valor e lançamento financeiro em aberto serão removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={revertToGoogleEvent} disabled={saving}>
+              Reverter
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
