@@ -204,6 +204,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       patient_id?: string;
       google_event_id?: string | null;
       patient_name?: string;
+      skip_patient_attendee?: boolean;
     },
   ): Promise<{ event_id?: string; meet_link?: string | null } | null> => {
     try {
@@ -215,7 +216,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           .select("full_name, email")
           .eq("id", args.patient_id)
           .maybeSingle();
-        if (p?.email) attendees.push({ email: p.email, displayName: p.full_name });
+        if (p?.email && !args.skip_patient_attendee) attendees.push({ email: p.email, displayName: p.full_name });
         if (p?.full_name) patientName = p.full_name;
       }
       if (user?.email) attendees.push({ email: user.email, displayName: "Psicóloga" });
@@ -716,6 +717,23 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     return toast({ title: "Erro", description: error.message, variant: "destructive" });
                   }
                   await upsertPayment(appointment.id, Number(form.price));
+
+                  if (appointment.google_event_id) {
+                    const result = await syncCalendar("update", appointment.id, {
+                      starts_at: appointment.starts_at,
+                      ends_at: appointment.ends_at,
+                      patient_id: form.patient_id,
+                      google_event_id: appointment.google_event_id,
+                      skip_patient_attendee: true,
+                    });
+                    if (result?.meet_link) {
+                      await supabase
+                        .from("appointments")
+                        .update({ meet_link: result.meet_link })
+                        .eq("id", appointment.id);
+                    }
+                  }
+
                   setSaving(false);
                   toast({ title: "Atendimento convertido para particular" });
                   setConvertToParticular(false);
@@ -951,6 +969,43 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           {appointment && isConverted && (
             <Button type="button" variant="ghost" size="sm" onClick={openRevertConfirmation}>
               Reverter para evento do Google
+            </Button>
+          )}
+          {appointment && isConverted && !appointment?.meet_link && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              disabled={saving}
+              onClick={async () => {
+                if (!appointment.google_event_id) {
+                  return toast({ title: "Este evento não possui vínculo com o Google Calendar.", variant: "destructive" });
+                }
+                setSaving(true);
+                const result = await syncCalendar("update", appointment.id, {
+                  starts_at: appointment.starts_at,
+                  ends_at: appointment.ends_at,
+                  patient_id: form.patient_id,
+                  google_event_id: appointment.google_event_id,
+                  skip_patient_attendee: true,
+                });
+                if (result?.meet_link) {
+                  await supabase
+                    .from("appointments")
+                    .update({ meet_link: result.meet_link })
+                    .eq("id", appointment.id);
+                  setSaving(false);
+                  onSaved();
+                  toast({ title: "Link do Meet criado" });
+                } else {
+                  setSaving(false);
+                  toast({ title: "Não foi possível gerar o link do Meet.", variant: "destructive" });
+                }
+              }}
+            >
+              <Video className="h-4 w-4" />
+              Gerar link do Meet
             </Button>
           )}
           {appointment?.meet_link && (
