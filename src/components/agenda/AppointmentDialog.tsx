@@ -717,6 +717,23 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     return toast({ title: "Erro", description: error.message, variant: "destructive" });
                   }
                   await upsertPayment(appointment.id, Number(form.price));
+
+                  if (appointment.google_event_id) {
+                    const result = await syncCalendar("update", appointment.id, {
+                      starts_at: appointment.starts_at,
+                      ends_at: appointment.ends_at,
+                      patient_id: form.patient_id,
+                      google_event_id: appointment.google_event_id,
+                      skip_patient_attendee: true,
+                    });
+                    if (result?.meet_link) {
+                      await supabase
+                        .from("appointments")
+                        .update({ meet_link: result.meet_link })
+                        .eq("id", appointment.id);
+                    }
+                  }
+
                   setSaving(false);
                   toast({ title: "Atendimento convertido para particular" });
                   setConvertToParticular(false);
