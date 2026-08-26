@@ -1,22 +1,20 @@
 import { useEffect, useState } from "react";
-import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock, Video, DollarSign, Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Trash2, MessageCircle, Lock, Video, DollarSign } from "lucide-react";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
+import { schema, INFINITE_CAP, toLocalDate, toLocalTime, buildOccurrenceDates } from "./appointment/helpers";
+import { Field } from "./appointment/Field";
+import { PatientCombobox } from "./appointment/PatientCombobox";
 
 type Props = {
   open: boolean;
@@ -25,33 +23,6 @@ type Props = {
   appointment?: any;
   presetStart?: Date | null;
 };
-
-// recurrence_mode: how the user picks recurrence
-//  - none      : single appointment
-//  - count     : N occurrences
-//  - until     : until end date
-//  - infinite  : up to a hard cap (52) so we don't generate forever
-const schema = z.object({
-  patient_id: z.string().optional().or(z.literal("")),
-  date: z.string().min(1),
-  time: z.string().min(1),
-  duration: z.coerce.number().min(10).max(480),
-  modality: z.enum(["in_person", "online"]),
-  price: z.coerce.number().min(0).max(99999),
-  status: z.enum(["scheduled", "done", "canceled", "no_show"]),
-  recurrence: z.enum(["none", "weekly", "biweekly"]),
-  recurrence_mode: z.enum(["none", "count", "until", "infinite"]),
-  occurrences: z.coerce.number().int().min(1).max(52),
-  recurrence_end_date: z.string().optional().or(z.literal("")),
-  notes: z.string().max(2000).optional().or(z.literal("")),
-  is_block: z.boolean().optional(),
-  block_reason: z.string().max(500).optional().or(z.literal("")),
-});
-
-const INFINITE_CAP = 52; // safety cap for "infinita"
-
-const toLocalDate = (d: Date) => d.toISOString().slice(0, 10);
-const toLocalTime = (d: Date) => d.toTimeString().slice(0, 5);
 
 export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, presetStart }: Props) => {
   const { user } = useAuth();
@@ -246,35 +217,6 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       console.error(err);
       return null;
     }
-  };
-
-  const buildOccurrenceDates = (start: Date, mode: string, recurrence: string, occurrences: number, endDate: string): Date[] => {
-    if (mode === "none" || recurrence === "none") return [start];
-    const stepDays = recurrence === "weekly" ? 7 : 14;
-    const dates: Date[] = [];
-    if (mode === "count") {
-      for (let i = 0; i < Math.min(occurrences, INFINITE_CAP); i++) {
-        const d = new Date(start); d.setDate(d.getDate() + i * stepDays);
-        dates.push(d);
-      }
-    } else if (mode === "until") {
-      if (!endDate) return [start];
-      const end = new Date(`${endDate}T23:59:59`);
-      let i = 0;
-      while (true) {
-        const d = new Date(start); d.setDate(d.getDate() + i * stepDays);
-        if (d > end) break;
-        dates.push(d);
-        i++;
-        if (i > INFINITE_CAP) break;
-      }
-    } else if (mode === "infinite") {
-      for (let i = 0; i < INFINITE_CAP; i++) {
-        const d = new Date(start); d.setDate(d.getDate() + i * stepDays);
-        dates.push(d);
-      }
-    }
-    return dates;
   };
 
   const submit = async () => {
@@ -1078,46 +1020,3 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   );
 };
 
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="space-y-1.5">
-    <Label className="text-xs">{label}</Label>
-    {children}
-  </div>
-);
-
-const PatientCombobox = ({ patients, value, onChange }: { patients: any[]; value: string; onChange: (id: string) => void }) => {
-  const [open, setOpen] = useState(false);
-  const selected = patients.find((p) => p.id === value);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between font-normal">
-          <span className={cn("truncate", !selected && "text-muted-foreground")}>
-            {selected ? selected.full_name : "Buscar paciente..."}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
-        <Command>
-          <CommandInput placeholder="Digite para buscar..." />
-          <CommandList>
-            <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
-            <CommandGroup>
-              {patients.map((p) => (
-                <CommandItem
-                  key={p.id}
-                  value={p.full_name}
-                  onSelect={() => { onChange(p.id); setOpen(false); }}
-                >
-                  <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
-                  {p.full_name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
