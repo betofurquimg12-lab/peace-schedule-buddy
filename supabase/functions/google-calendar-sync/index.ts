@@ -214,7 +214,6 @@ Deno.serve(async (req) => {
               starts_at: startISO,
               ends_at: endISO,
               duration_minutes: durC,
-              meet_link: ev.hangoutLink ?? (existing as any).meet_link ?? null,
               google_etag: ev.etag ?? null,
               google_updated_at: ev.updated ?? null,
               last_synced_at: new Date().toISOString(),
