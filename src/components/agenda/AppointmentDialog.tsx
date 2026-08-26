@@ -204,6 +204,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       patient_id?: string;
       google_event_id?: string | null;
       patient_name?: string;
+      skip_patient_attendee?: boolean;
     },
   ): Promise<{ event_id?: string; meet_link?: string | null } | null> => {
     try {
@@ -215,7 +216,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           .select("full_name, email")
           .eq("id", args.patient_id)
           .maybeSingle();
-        if (p?.email) attendees.push({ email: p.email, displayName: p.full_name });
+        if (p?.email && !args.skip_patient_attendee) attendees.push({ email: p.email, displayName: p.full_name });
         if (p?.full_name) patientName = p.full_name;
       }
       if (user?.email) attendees.push({ email: user.email, displayName: "Psicóloga" });
