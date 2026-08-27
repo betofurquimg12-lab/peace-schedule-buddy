@@ -10,11 +10,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Lock, Video, DollarSign } from "lucide-react";
+import { Trash2, MessageCircle, Video, DollarSign } from "lucide-react";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 import { schema, INFINITE_CAP, toLocalDate, toLocalTime, buildOccurrenceDates } from "./appointment/helpers";
 import { Field } from "./appointment/Field";
 import { PatientCombobox } from "./appointment/PatientCombobox";
+import { ExternalEventDialog } from "./appointment/ExternalEventDialog";
 
 type Props = {
   open: boolean;
