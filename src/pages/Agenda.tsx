@@ -28,6 +28,21 @@ const openWaForAppointment = async (a: any, kind: "reminder" | "charge") => {
   window.open(url, "_blank", "noopener,noreferrer");
 };
 
+const SYNC_TS_KEY = "agenda-last-sync";
+const SYNC_MIN_INTERVAL_MS = 5 * 60 * 1000;
+
+const shouldAutoSync = () => {
+  try {
+    const last = Number(localStorage.getItem(SYNC_TS_KEY) || 0);
+    return !last || Date.now() - last > SYNC_MIN_INTERVAL_MS;
+  } catch {
+    return true;
+  }
+};
+const markSynced = () => {
+  try { localStorage.setItem(SYNC_TS_KEY, String(Date.now())); } catch { /* ignore */ }
+};
+
 const startOfWeek = (d: Date) => {
   const x = new Date(d);
   const day = x.getDay();
@@ -97,6 +112,25 @@ const Agenda = () => {
   };
   useEffect(() => { void load(); }, [refDate]);
 
+  // Sync sob demanda: não bloqueia a tela. Renderiza o cache, sincroniza em
+  // background e recarrega. Throttle de 5 min para não disparar a cada navegação.
+  useEffect(() => {
+    if (!shouldAutoSync()) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { error } = await supabase.functions.invoke("google-calendar-sync");
+        if (error) throw error;
+        markSynced();
+        if (!cancelled) await load();
+      } catch {
+        /* silencioso: o botão Sincronizar segue disponível */
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const apptId = searchParams.get("appointment");
@@ -153,11 +187,12 @@ const Agenda = () => {
               variant="outline"
               onClick={async () => {
                 setSyncing(true);
-                try {
-                  const { data, error } = await supabase.functions.invoke("google-calendar-sync");
-                  if (error) throw error;
-                  toast({ title: "Sincronizado", description: `criados ${data?.created ?? 0}, atualizados ${data?.updated ?? 0}, removidos ${data?.deleted ?? 0}` });
-                  await load();
+              try {
+                const { data, error } = await supabase.functions.invoke("google-calendar-sync");
+                if (error) throw error;
+                markSynced();
+                toast({ title: "Sincronizado", description: `criados ${data?.created ?? 0}, atualizados ${data?.updated ?? 0}, removidos ${data?.deleted ?? 0}` });
+                await load();
                 } catch (e: any) {
                   toast({ title: "Erro ao sincronizar", description: e?.message ?? String(e), variant: "destructive" });
                 } finally { setSyncing(false); }

@@ -72,7 +72,7 @@ export const ExternalEventDialog = ({
           {!isVittudeEvent && (
             <p className="text-xs text-muted-foreground pt-2">
               Este horário está bloqueado porque foi criado direto no Google Calendar.
-              Para alterar ou excluir, edite no próprio Google Calendar — o sistema sincroniza automaticamente em até 5 minutos.
+              Para alterar ou excluir, edite no próprio Google Calendar — o sistema sincroniza ao abrir a Agenda ou pelo botão Sincronizar.
             </p>
           )}
 
