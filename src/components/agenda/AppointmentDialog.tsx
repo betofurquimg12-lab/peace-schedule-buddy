@@ -301,7 +301,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       }
 
       // Fire-and-forget Google sync — não bloqueia UI
-      if (!isBlock) {
+      // Eventos da agenda Vittude são somente leitura — não tentar escrever no Google.
+      if (!isBlock && !appointment?.is_vittude) {
         void (async () => {
           const result = await syncCalendar(
             appointment.google_event_id ? "update" : "create",
@@ -343,15 +344,15 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         if (groupId) {
           const { data } = await supabase
             .from("appointments")
-            .select("id, google_event_id, google_calendar_id")
+            .select("id, google_event_id, google_calendar_id, is_vittude")
             .eq("recurrence_group_id", groupId)
             .gte("starts_at", appointment.starts_at);
           toDelete = data ?? [];
         } else {
-          toDelete = [{ id: appointment.id, google_event_id: appointment.google_event_id, google_calendar_id: appointment.google_calendar_id }];
+          toDelete = [{ id: appointment.id, google_event_id: appointment.google_event_id, google_calendar_id: appointment.google_calendar_id, is_vittude: appointment.is_vittude }];
         }
         for (const a of toDelete) {
-          if (a.google_event_id) {
+          if (a.google_event_id && !a.is_vittude) {
             await syncCalendar("delete", a.id, { google_event_id: a.google_event_id, calendar_id: a.google_calendar_id });
           }
         }
@@ -451,13 +452,13 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
 
   const removeScoped = async (scope: "one" | "forward" | "all") => {
     if (!appointment) return;
-    let toDelete: { id: string; google_event_id?: string | null; google_calendar_id?: string | null }[] = [];
+    let toDelete: { id: string; google_event_id?: string | null; google_calendar_id?: string | null; is_vittude?: boolean | null }[] = [];
     if (scope === "one" || !appointment.recurrence_group_id) {
-      toDelete = [{ id: appointment.id, google_event_id: appointment.google_event_id, google_calendar_id: appointment.google_calendar_id }];
+      toDelete = [{ id: appointment.id, google_event_id: appointment.google_event_id, google_calendar_id: appointment.google_calendar_id, is_vittude: appointment.is_vittude }];
     } else {
       const q = supabase
         .from("appointments")
-        .select("id, google_event_id, google_calendar_id")
+        .select("id, google_event_id, google_calendar_id, is_vittude")
         .eq("recurrence_group_id", appointment.recurrence_group_id);
       const { data } = scope === "forward"
         ? await q.gte("starts_at", appointment.starts_at)
@@ -465,7 +466,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       toDelete = data ?? [];
     }
     for (const a of toDelete) {
-      if (a.google_event_id) await syncCalendar("delete", a.id, { google_event_id: a.google_event_id, calendar_id: a.google_calendar_id });
+      if (a.google_event_id && !a.is_vittude) await syncCalendar("delete", a.id, { google_event_id: a.google_event_id, calendar_id: a.google_calendar_id });
     }
     const { error } = await supabase.from("appointments").delete().in("id", toDelete.map((a) => a.id));
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
