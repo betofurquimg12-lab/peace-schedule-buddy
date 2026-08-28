@@ -200,7 +200,6 @@ Deno.serve(async (req) => {
               meet_link: ev.hangoutLink ?? null,
               google_etag: ev.etag ?? null,
               google_calendar_id: ev._calendarId,
-              google_calendar_id: ev._calendarId,
           google_updated_at: ev.updated ?? null,
               last_synced_at: new Date().toISOString(),
             }).eq('id', existing.id);
@@ -217,7 +216,6 @@ Deno.serve(async (req) => {
               ends_at: endISO,
               duration_minutes: durC,
               google_etag: ev.etag ?? null,
-              google_calendar_id: ev._calendarId,
               google_calendar_id: ev._calendarId,
           google_updated_at: ev.updated ?? null,
               last_synced_at: new Date().toISOString(),
