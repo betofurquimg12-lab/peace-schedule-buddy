@@ -122,7 +122,25 @@ Deno.serve(async (req) => {
       if (p.full_name) patientByName.set(p.full_name.trim().toLowerCase(), p.id);
     }
 
+    // Preload de todos os agendamentos com google_event_id (evita N+1 dentro do loop)
+    const existingByEventId = new Map<string, any>();
+    {
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data: page } = await supabase
+          .from('appointments')
+          .select('id, source, google_etag, is_vittude, patient_id, created_by, converted_to_particular, meet_link, google_event_id')
+          .not('google_event_id', 'is', null)
+          .range(from, from + PAGE - 1);
+        for (const r of page ?? []) {
+          if (r.google_event_id) existingByEventId.set(r.google_event_id, r);
+        }
+        if (!page || page.length < PAGE) break;
+      }
+    }
+
     // Only events that actually reference Vittude are treated as Vittude sessions.
+
     // Personal events keep their original title and never get a patient linked.
     const detectVittude = (ev: any) => {
       const summary = (ev.summary ?? '').trim();
@@ -152,24 +170,23 @@ Deno.serve(async (req) => {
       if (!eventId) { skipped++; skippedDetails.push({ id: '?', reason: 'no id' }); continue; }
       statusCounts[ev.status ?? 'unknown'] = (statusCounts[ev.status ?? 'unknown'] ?? 0) + 1;
 
-      // Find existing row by google_event_id
-      const { data: existing } = await supabase
-        .from('appointments')
-        .select('id, source, google_etag, is_vittude, patient_id, created_by, converted_to_particular, meet_link')
-        .eq('google_event_id', eventId)
-        .maybeSingle();
+      // Lookup em memória (preload acima) — sem round-trip por evento
+      const existing = existingByEventId.get(eventId) ?? null;
 
       // Cancellation from Google
+
       if (ev.status === 'cancelled') {
         if (existing) {
           await supabase.from('appointments').delete().eq('id', existing.id);
           deleted++;
+          existingByEventId.delete(eventId);
         } else {
           skipped++;
           skippedDetails.push({ id: eventId, reason: 'cancelled, no local row', status: ev.status });
         }
         continue;
       }
+
 
       // Determine start/end. Support all-day events (start.date) and timed (start.dateTime).
       let startISO: string | undefined = ev.start?.dateTime;
