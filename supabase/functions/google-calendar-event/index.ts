@@ -19,6 +19,7 @@ interface Body {
   ends_at?: string;   // ISO
   attendees?: { email: string; displayName?: string }[];
   google_event_id?: string; // for update/delete
+  calendar_id?: string; // calendário de destino; default 'primary'
 }
 
 Deno.serve(async (req) => {
@@ -66,10 +67,12 @@ Deno.serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
+    const calendarId = encodeURIComponent(body.calendar_id || 'primary');
+
     if (body.action === 'delete') {
       if (!body.google_event_id) return json({ error: 'google_event_id required' }, 400);
       const r = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?sendUpdates=${sendUpdates}`,
+        `${GATEWAY_URL}/calendars/${calendarId}/events/${encodeURIComponent(body.google_event_id)}?sendUpdates=${sendUpdates}`,
         { method: 'DELETE', headers },
       );
       if (!r.ok && r.status !== 410 && r.status !== 404) {
@@ -119,14 +122,14 @@ Deno.serve(async (req) => {
     let response: Response;
     if (body.action === 'create') {
       response = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events?conferenceDataVersion=1&sendUpdates=${sendUpdates}`,
+        `${GATEWAY_URL}/calendars/${calendarId}/events?conferenceDataVersion=1&sendUpdates=${sendUpdates}`,
         { method: 'POST', headers, body: JSON.stringify(eventPayload) },
       );
     } else {
       // update
       if (!body.google_event_id) return json({ error: 'google_event_id required for update' }, 400);
       response = await fetch(
-        `${GATEWAY_URL}/calendars/primary/events/${encodeURIComponent(body.google_event_id)}?conferenceDataVersion=1&sendUpdates=${sendUpdates}`,
+        `${GATEWAY_URL}/calendars/${calendarId}/events/${encodeURIComponent(body.google_event_id)}?conferenceDataVersion=1&sendUpdates=${sendUpdates}`,
         { method: 'PATCH', headers, body: JSON.stringify(eventPayload) },
       );
     }

@@ -199,7 +199,9 @@ Deno.serve(async (req) => {
             await supabase.from('appointments').update({
               meet_link: ev.hangoutLink ?? null,
               google_etag: ev.etag ?? null,
-              google_updated_at: ev.updated ?? null,
+              google_calendar_id: ev._calendarId,
+              google_calendar_id: ev._calendarId,
+          google_updated_at: ev.updated ?? null,
               last_synced_at: new Date().toISOString(),
             }).eq('id', existing.id);
             updated++;
@@ -215,7 +217,9 @@ Deno.serve(async (req) => {
               ends_at: endISO,
               duration_minutes: durC,
               google_etag: ev.etag ?? null,
-              google_updated_at: ev.updated ?? null,
+              google_calendar_id: ev._calendarId,
+              google_calendar_id: ev._calendarId,
+          google_updated_at: ev.updated ?? null,
               last_synced_at: new Date().toISOString(),
             }).eq('id', existing.id);
             updated++;
@@ -241,6 +245,7 @@ Deno.serve(async (req) => {
           external_summary: displaySummary,
           meet_link: ev.hangoutLink ?? null,
           google_etag: ev.etag ?? null,
+          google_calendar_id: ev._calendarId,
           google_updated_at: ev.updated ?? null,
           last_synced_at: new Date().toISOString(),
           is_vittude: isVittude,
@@ -269,6 +274,7 @@ Deno.serve(async (req) => {
           external_summary: displaySummary,
           google_event_id: eventId,
           google_etag: ev.etag ?? null,
+          google_calendar_id: ev._calendarId,
           google_updated_at: ev.updated ?? null,
           meet_link: ev.hangoutLink ?? null,
           last_synced_at: new Date().toISOString(),

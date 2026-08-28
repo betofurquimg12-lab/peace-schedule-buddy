@@ -186,6 +186,7 @@ export const ExternalEventDialog = ({
                     patient_id: form.patient_id,
                     google_event_id: appointment.google_event_id,
                     skip_patient_attendee: true,
+                    calendar_id: appointment.google_calendar_id,
                   });
                   if (result?.meet_link) {
                     await supabase
