@@ -89,6 +89,7 @@ export type Database = {
           duration_minutes: number
           ends_at: string
           external_summary: string | null
+          google_calendar_id: string | null
           google_etag: string | null
           google_event_id: string | null
           google_updated_at: string | null
@@ -118,6 +119,7 @@ export type Database = {
           duration_minutes?: number
           ends_at: string
           external_summary?: string | null
+          google_calendar_id?: string | null
           google_etag?: string | null
           google_event_id?: string | null
           google_updated_at?: string | null
@@ -147,6 +149,7 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string
           external_summary?: string | null
+          google_calendar_id?: string | null
           google_etag?: string | null
           google_event_id?: string | null
           google_updated_at?: string | null
