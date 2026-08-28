@@ -152,14 +152,11 @@ Deno.serve(async (req) => {
       if (!eventId) { skipped++; skippedDetails.push({ id: '?', reason: 'no id' }); continue; }
       statusCounts[ev.status ?? 'unknown'] = (statusCounts[ev.status ?? 'unknown'] ?? 0) + 1;
 
-      // Find existing row by google_event_id
-      const { data: existing } = await supabase
-        .from('appointments')
-        .select('id, source, google_etag, is_vittude, patient_id, created_by, converted_to_particular, meet_link')
-        .eq('google_event_id', eventId)
-        .maybeSingle();
+      // Lookup em memória (preload acima) — sem round-trip por evento
+      const existing = existingByEventId.get(eventId) ?? null;
 
       // Cancellation from Google
+
       if (ev.status === 'cancelled') {
         if (existing) {
           await supabase.from('appointments').delete().eq('id', existing.id);
