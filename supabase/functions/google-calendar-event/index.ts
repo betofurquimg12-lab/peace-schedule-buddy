@@ -75,9 +75,15 @@ Deno.serve(async (req) => {
         `${GATEWAY_URL}/calendars/${calendarId}/events/${encodeURIComponent(body.google_event_id)}?sendUpdates=${sendUpdates}`,
         { method: 'DELETE', headers },
       );
-      if (!r.ok && r.status !== 410 && r.status !== 404) {
+      // 404/410 = já não existe. 403 = calendário somente leitura (agenda Vittude):
+      // não é erro do app, o evento simplesmente não nos pertence.
+      if (!r.ok && r.status !== 410 && r.status !== 404 && r.status !== 403) {
         const t = await r.text();
         return json({ error: `Calendar delete failed [${r.status}]: ${t}` }, 500);
+      }
+      if (r.status === 403) {
+        console.log('delete skipped: read-only calendar', { calendarId, eventId: body.google_event_id });
+        return json({ ok: true, skipped: true, reason: 'read_only_calendar' });
       }
       return json({ ok: true });
     }
@@ -136,6 +142,9 @@ Deno.serve(async (req) => {
 
     const result = await response.json();
     if (!response.ok) {
+      if (response.status === 403) {
+        return json({ error: 'Calendário somente leitura: este evento não pertence à agenda principal e não pode ser alterado pelo app.', read_only: true, details: result }, 403);
+      }
       return json({ error: `Calendar API failed [${response.status}]`, details: result }, 500);
     }
 
