@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const schema = z
   .object({
@@ -36,6 +37,7 @@ const schema = z
     main_complaint: z.string().trim().max(2000).optional().or(z.literal("")),
     history: z.string().trim().max(5000).optional().or(z.literal("")),
     notes: z.string().trim().max(5000).optional().or(z.literal("")),
+    emite_nota: z.boolean().default(false),
   })
   .refine((d) => !!(d.phone || d.email), { message: "Informe telefone ou e-mail", path: ["phone"] });
 
@@ -68,6 +70,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     main_complaint: "",
     history: "",
     notes: "",
+    emite_nota: false,
   });
 
   useEffect(() => {
@@ -89,13 +92,14 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
         main_complaint: patient.main_complaint ?? "",
         history: patient.history ?? "",
         notes: patient.notes ?? "",
+        emite_nota: !!patient.emite_nota,
       });
     } else {
       setForm({
         full_name: "", phone: "", email: "", cpf: "", birth_date: "", address: "",
         city: "", state: "", country: "Brasil",
         responsible_name: "", responsible_phone: "", default_session_price: 0, payment_link: "",
-        main_complaint: "", history: "", notes: "",
+        main_complaint: "", history: "", notes: "", emite_nota: false,
       });
     }
   }, [patient, open]);
@@ -123,6 +127,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       responsible_phone: parsed.data.responsible_phone || null,
       default_session_price: parsed.data.default_session_price,
       payment_link: parsed.data.payment_link || null,
+      emite_nota: !!parsed.data.emite_nota,
     };
     if (isOwner) {
       payload.main_complaint = parsed.data.main_complaint || null;
@@ -165,6 +170,10 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
             <div className="grid sm:grid-cols-2 gap-3">
               <Field label="CPF"><Input value={form.cpf} onChange={(e) => set("cpf", e.target.value)} placeholder="000.000.000-00" /></Field>
               <Field label="Data de nascimento"><Input type="date" value={form.birth_date} onChange={(e) => set("birth_date", e.target.value)} /></Field>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="emite_nota" checked={!!form.emite_nota} onCheckedChange={(v) => set("emite_nota", v === true)} />
+              <Label htmlFor="emite_nota" className="text-sm font-normal">Emite nota fiscal</Label>
             </div>
             <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
             <Field label="Link de pagamento (Pix, boleto, checkout...)">

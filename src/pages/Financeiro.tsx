@@ -17,6 +17,7 @@ import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
 import { ChevronLeft, ChevronRight, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { FechamentoTab } from "@/components/financeiro/FechamentoTab";
+import { NotasTab } from "@/components/financeiro/NotasTab";
 
 const Financeiro = () => {
   const { user } = useAuth();
@@ -314,6 +315,7 @@ const Financeiro = () => {
           <TabsTrigger value="patients">Por paciente</TabsTrigger>
           <TabsTrigger value="general">Geral</TabsTrigger>
           <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
+          <TabsTrigger value="notas">Notas fiscais</TabsTrigger>
         </TabsList>
 
         <TabsContent value="receivable" className="mt-4">
@@ -568,6 +570,10 @@ const Financeiro = () => {
 
         <TabsContent value="fechamento" className="mt-4">
           <FechamentoTab appts={appts} month={month} />
+        </TabsContent>
+
+        <TabsContent value="notas" className="mt-4">
+          <NotasTab month={month} />
         </TabsContent>
       </Tabs>
 
