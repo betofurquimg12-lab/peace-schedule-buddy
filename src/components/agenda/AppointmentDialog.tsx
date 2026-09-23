@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatDateTimeBR } from "@/lib/format";
-import { Trash2, MessageCircle, Video, DollarSign } from "lucide-react";
+import { Trash2, MessageCircle, Video, DollarSign, Loader2 } from "lucide-react";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 import { schema, INFINITE_CAP, toLocalDate, toLocalTime, buildOccurrenceDates } from "./appointment/helpers";
 import { Field } from "./appointment/Field";
@@ -57,8 +57,15 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   });
   const [deleteScopeOpen, setDeleteScopeOpen] = useState(false);
   const [editScopeOpen, setEditScopeOpen] = useState(false);
+  const [scopeBusy, setScopeBusy] = useState<null | "one" | "forward" | "all">(null);
   const [revertOpen, setRevertOpen] = useState(false);
   const initialRecurrenceRef = useRef<{ recurrence_mode: string; recurrence: string; occurrences: number; recurrence_end_date: string } | null>(null);
+
+  const runScoped = async (scope: "one" | "forward" | "all", fn: () => Promise<unknown>) => {
+    if (scopeBusy) return;
+    setScopeBusy(scope);
+    try { await fn(); } finally { setScopeBusy(null); }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -923,32 +930,46 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         </DialogFooter>
       </DialogContent>
 
-      <Dialog open={deleteScopeOpen} onOpenChange={setDeleteScopeOpen}>
+      <Dialog open={deleteScopeOpen} onOpenChange={(o) => { if (!scopeBusy) setDeleteScopeOpen(o); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Excluir agendamento recorrente</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">Este agendamento faz parte de uma série. O que deseja excluir?</p>
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
-            <Button variant="outline" onClick={() => removeScoped("one")}>Apenas este evento</Button>
-            <Button variant="outline" onClick={() => removeScoped("forward")}>Este e os próximos</Button>
-            <Button variant="destructive" onClick={() => removeScoped("all")}>Todos os eventos da recorrência</Button>
+            <Button variant="outline" onClick={() => runScoped("one", () => removeScoped("one"))} disabled={!!scopeBusy}>
+              {scopeBusy === "one" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : "Apenas este evento"}
+            </Button>
+            <Button variant="outline" onClick={() => runScoped("forward", () => removeScoped("forward"))} disabled={!!scopeBusy}>
+              {scopeBusy === "forward" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : "Este e os próximos"}
+            </Button>
+            <Button variant="destructive" onClick={() => runScoped("all", () => removeScoped("all"))} disabled={!!scopeBusy}>
+              {scopeBusy === "all" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : "Todos os eventos da recorrência"}
+            </Button>
           </DialogFooter>
+          {scopeBusy && <p className="text-xs text-muted-foreground">Atualizando a agenda e o Google Calendar, pode levar alguns segundos…</p>}
         </DialogContent>
       </Dialog>
 
-      <Dialog open={editScopeOpen} onOpenChange={setEditScopeOpen}>
+      <Dialog open={editScopeOpen} onOpenChange={(o) => { if (!scopeBusy) setEditScopeOpen(o); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Editar agendamento recorrente</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">Este agendamento faz parte de uma série. Aplicar as alterações em:</p>
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
-            <Button variant="outline" onClick={() => submit("one")}>Apenas este evento</Button>
-            <Button variant="outline" onClick={() => submit("forward")}>Este e os próximos</Button>
-            <Button variant="outline" onClick={() => submit("all")}>Todos os eventos da recorrência</Button>
+            <Button variant="outline" onClick={() => runScoped("one", () => submit("one"))} disabled={!!scopeBusy}>
+              {scopeBusy === "one" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : "Apenas este evento"}
+            </Button>
+            <Button variant="outline" onClick={() => runScoped("forward", () => submit("forward"))} disabled={!!scopeBusy}>
+              {scopeBusy === "forward" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : "Este e os próximos"}
+            </Button>
+            <Button variant="outline" onClick={() => runScoped("all", () => submit("all"))} disabled={!!scopeBusy}>
+              {scopeBusy === "all" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : "Todos os eventos da recorrência"}
+            </Button>
           </DialogFooter>
           <p className="text-xs text-muted-foreground">Data e status mudam só neste evento. Horário, paciente, duração, modalidade, valor e observações vão para os demais.</p>
+          {scopeBusy && <p className="text-xs text-muted-foreground">Atualizando a agenda e o Google Calendar, pode levar alguns segundos…</p>}
         </DialogContent>
       </Dialog>
 
