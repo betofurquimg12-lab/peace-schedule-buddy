@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PaymentLinkExpiryBadge } from "@/components/patients/PaymentLinkExpiryBadge";
 
+const onlyDdi = (v?: string) => /^\+?\d{0,3}$/.test((v ?? "").trim());
+
 const schema = z
   .object({
     full_name: z.string().trim().min(2, "Informe o nome").max(120),
@@ -41,7 +43,7 @@ const schema = z
     notes: z.string().trim().max(5000).optional().or(z.literal("")),
     emite_nota: z.boolean().default(false),
   })
-  .refine((d) => !!(d.phone || d.email), { message: "Informe telefone ou e-mail", path: ["phone"] });
+  .refine((d) => !!((d.phone && !onlyDdi(d.phone)) || d.email), { message: "Informe telefone ou e-mail", path: ["phone"] });
 
 type Props = {
   open: boolean;
@@ -57,7 +59,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({
     full_name: "",
-    phone: "",
+    phone: "+55 ",
     email: "",
     cpf: "",
     birth_date: "",
@@ -66,7 +68,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     state: "",
     country: "Brasil",
     responsible_name: "",
-    responsible_phone: "",
+    responsible_phone: "+55 ",
     default_session_price: 0,
     payment_link: "",
     payment_link_expires_at: "",
@@ -100,9 +102,9 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       });
     } else {
       setForm({
-        full_name: "", phone: "", email: "", cpf: "", birth_date: "", address: "",
+        full_name: "", phone: "+55 ", email: "", cpf: "", birth_date: "", address: "",
         city: "", state: "", country: "Brasil",
-        responsible_name: "", responsible_phone: "", default_session_price: 0, payment_link: "", payment_link_expires_at: "",
+        responsible_name: "", responsible_phone: "+55 ", default_session_price: 0, payment_link: "", payment_link_expires_at: "",
         main_complaint: "", history: "", notes: "", emite_nota: false,
       });
     }
@@ -119,7 +121,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     setSaving(true);
     const payload: any = {
       full_name: parsed.data.full_name,
-      phone: parsed.data.phone || null,
+      phone: parsed.data.phone && !onlyDdi(parsed.data.phone) ? parsed.data.phone.trim() : null,
       email: parsed.data.email || null,
       cpf: parsed.data.cpf || null,
       birth_date: parsed.data.birth_date || null,
@@ -128,7 +130,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       state: parsed.data.state || null,
       country: parsed.data.country || null,
       responsible_name: parsed.data.responsible_name || null,
-      responsible_phone: parsed.data.responsible_phone || null,
+      responsible_phone: parsed.data.responsible_phone && !onlyDdi(parsed.data.responsible_phone) ? parsed.data.responsible_phone.trim() : null,
       default_session_price: parsed.data.default_session_price,
       payment_link: parsed.data.payment_link || null,
       payment_link_expires_at: parsed.data.payment_link ? (parsed.data.payment_link_expires_at || null) : null,
@@ -169,7 +171,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
           <TabsContent value="basic" className="space-y-3 mt-4">
             <Field label="Nome completo *"><Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} /></Field>
             <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Telefone"><Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(11) 99999-9999" /></Field>
+              <Field label="Telefone (com DDI)"><Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+55 11 99999-9999" /></Field>
               <Field label="E-mail"><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Field>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -210,7 +212,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <Field label="Responsável (se menor)"><Input value={form.responsible_name} onChange={(e) => set("responsible_name", e.target.value)} /></Field>
-              <Field label="Telefone do responsável"><Input value={form.responsible_phone} onChange={(e) => set("responsible_phone", e.target.value)} /></Field>
+              <Field label="Telefone do responsável (com DDI)"><Input value={form.responsible_phone} onChange={(e) => set("responsible_phone", e.target.value)} placeholder="+55 11 99999-9999" /></Field>
             </div>
           </TabsContent>
 

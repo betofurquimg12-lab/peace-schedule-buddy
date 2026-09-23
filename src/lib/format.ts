@@ -1,9 +1,10 @@
-/** Limpa um número e devolve só dígitos com DDI BR. */
+/** Número para wa.me. Com "+", o DDI já está no número. Sem "+" (legado/manual), assume Brasil. */
 export const sanitizePhoneToWa = (phone?: string | null) => {
   if (!phone) return "";
-  const digits = phone.replace(/\D/g, "");
+  const raw = phone.trim();
+  const digits = raw.replace(/\D/g, "");
   if (!digits) return "";
-  if (digits.startsWith("55")) return digits;
+  if (raw.startsWith("+")) return digits;
   return `55${digits}`;
 };
 

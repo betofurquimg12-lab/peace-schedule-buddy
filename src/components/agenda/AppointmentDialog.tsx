@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -56,7 +56,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     is_vittude: false,
   });
   const [deleteScopeOpen, setDeleteScopeOpen] = useState(false);
+  const [editScopeOpen, setEditScopeOpen] = useState(false);
   const [revertOpen, setRevertOpen] = useState(false);
+  const initialRecurrenceRef = useRef<{ recurrence_mode: string; recurrence: string; occurrences: number; recurrence_end_date: string } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -91,6 +93,16 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             }));
           }
         });
+      const recurrenceMode = appointment.recurrence && appointment.recurrence !== "none" ? (appointment.recurrence_end_date ? "until" : "count") : "none";
+      const recurrence = appointment.recurrence ?? "none";
+      const occurrences = 4;
+      const recurrenceEndDate = appointment.recurrence_end_date ?? "";
+      initialRecurrenceRef.current = {
+        recurrence_mode: recurrenceMode,
+        recurrence,
+        occurrences,
+        recurrence_end_date: recurrenceEndDate,
+      };
       setForm({
         patient_id: appointment.patient?.id ?? appointment.patient_id ?? "",
         date: toLocalDate(s),
@@ -99,10 +111,10 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         modality: appointment.modality ?? "online",
         price: Number(appointment.price ?? 0),
         status: appointment.status ?? "scheduled",
-        recurrence: appointment.recurrence ?? "none",
-        recurrence_mode: appointment.recurrence && appointment.recurrence !== "none" ? (appointment.recurrence_end_date ? "until" : "count") : "none",
-        occurrences: 4,
-        recurrence_end_date: appointment.recurrence_end_date ?? "",
+        recurrence,
+        recurrence_mode: recurrenceMode,
+        occurrences,
+        recurrence_end_date: recurrenceEndDate,
         notes: appointment.notes ?? "",
         payment_status: appointment.is_vittude ? "vittude" : "pending",
         payment_date: toLocalDate(s),
@@ -113,6 +125,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       });
     } else {
       const s = presetStart ?? new Date();
+      initialRecurrenceRef.current = null;
       setExistingPayment(null);
       setForm((f: any) => ({
         ...f,
@@ -222,7 +235,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     }
   };
 
-  const submit = async () => {
+  const submit = async (editScope?: "one" | "forward" | "all") => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast({ title: "Verifique os dados", description: parsed.error.issues[0].message, variant: "destructive" });
@@ -266,14 +279,20 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       return;
     }
 
+    const init = initialRecurrenceRef.current;
     const recurrenceChanged =
-      appointment &&
-      (parsed.data.recurrence_mode !== (appointment.recurrence && appointment.recurrence !== "none" ? "count" : "none") ||
-       parsed.data.recurrence !== (appointment.recurrence ?? "none") ||
-       (parsed.data.recurrence_mode !== "none" &&
-        (parsed.data.occurrences !== 1 || parsed.data.recurrence_end_date !== (appointment.recurrence_end_date ?? ""))));
+      !!appointment && !!init &&
+      (parsed.data.recurrence_mode !== init.recurrence_mode ||
+       parsed.data.recurrence !== init.recurrence ||
+       (parsed.data.recurrence_mode === "count" && Number(parsed.data.occurrences) !== Number(init.occurrences)) ||
+       (parsed.data.recurrence_mode === "until" && (parsed.data.recurrence_end_date || "") !== (init.recurrence_end_date || "")));
 
     if (appointment && !recurrenceChanged) {
+      if (appointment.recurrence_group_id && !editScope) {
+        setSaving(false);
+        setEditScopeOpen(true);
+        return;
+      }
       // Editing only THIS single appointment — never propagates to recurrence siblings.
       const { error } = await supabase.from("appointments").update({
         patient_id: isBlock ? null : (parsed.data.patient_id || null),
@@ -324,8 +343,61 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         })();
       }
 
+      let otherSessions: any[] = [];
+      if ((editScope === "forward" || editScope === "all") && appointment.recurrence_group_id) {
+        let seriesQuery = supabase
+          .from("appointments")
+          .select("id, starts_at, google_event_id, google_calendar_id, is_vittude")
+          .eq("recurrence_group_id", appointment.recurrence_group_id)
+          .neq("id", appointment.id);
+        if (editScope === "forward") {
+          seriesQuery = seriesQuery.gte("starts_at", appointment.starts_at);
+        }
+        const { data: series, error: seriesError } = await seriesQuery;
+        if (seriesError) {
+          setSaving(false);
+          return toast({ title: "Erro", description: seriesError.message, variant: "destructive" });
+        }
+        otherSessions = series ?? [];
+        const syncedSessions: Array<{ id: string; starts_at: string; ends_at: string; google_event_id: string | null; google_calendar_id: string | null; is_vittude: boolean }> = [];
+        for (const s of otherSessions) {
+          const newStart = new Date(`${toLocalDate(new Date(s.starts_at))}T${parsed.data.time}:00`);
+          const newEnd = new Date(newStart.getTime() + parsed.data.duration * 60000);
+          const startsAt = newStart.toISOString();
+          const endsAt = newEnd.toISOString();
+          const { error: updateError } = await supabase.from("appointments").update({
+            patient_id: isBlock ? null : (parsed.data.patient_id || null),
+            starts_at: startsAt,
+            ends_at: endsAt,
+            duration_minutes: parsed.data.duration,
+            modality: parsed.data.modality,
+            price: isBlock ? 0 : parsed.data.price,
+            notes: parsed.data.notes || null,
+          }).eq("id", s.id);
+          if (updateError) {
+            setSaving(false);
+            return toast({ title: "Erro", description: updateError.message, variant: "destructive" });
+          }
+          syncedSessions.push({ ...s, starts_at: startsAt, ends_at: endsAt });
+        }
+        void (async () => {
+          for (const s of syncedSessions) {
+            if (s.google_event_id && !s.is_vittude) {
+              await syncCalendar("update", s.id, {
+                starts_at: s.starts_at,
+                ends_at: s.ends_at,
+                patient_id: parsed.data.patient_id,
+                google_event_id: s.google_event_id,
+                calendar_id: s.google_calendar_id,
+              });
+            }
+          }
+        })();
+      }
+
       setSaving(false);
-      toast({ title: "Agendamento atualizado" });
+      setEditScopeOpen(false);
+      toast({ title: otherSessions.length ? `Agendamento atualizado (${1 + otherSessions.length} sessões)` : "Agendamento atualizado" });
     } else {
       // Either creating new OR editing with recurrence change → regenerate series from this date
       const dates = buildOccurrenceDates(
@@ -690,7 +762,16 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 ).length;
                 return (
                   <div className="rounded-md bg-primary/10 text-primary px-2 py-1.5 text-xs font-medium">
-                    Serão criadas {count} sessão(ões) — pagamento aplicado apenas à 1ª; demais ficam em aberto.
+                    <div>Serão criadas {count} sessão(ões) — pagamento aplicado apenas à 1ª; demais ficam em aberto.</div>
+                    {appointment && (() => {
+                      const init = initialRecurrenceRef.current;
+                      const changed = !!init &&
+                        (form.recurrence_mode !== init.recurrence_mode ||
+                         form.recurrence !== init.recurrence ||
+                         (form.recurrence_mode === "count" && Number(form.occurrences) !== Number(init.occurrences)) ||
+                         (form.recurrence_mode === "until" && (form.recurrence_end_date || "") !== (init.recurrence_end_date || "")));
+                      return changed ? <div className="mt-1">Alterar a recorrência recria esta sessão e as próximas da série.</div> : null;
+                    })()}
                   </div>
                 );
               })()}
@@ -838,7 +919,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             </>
           )}
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button size="sm" onClick={submit} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+          <Button size="sm" onClick={() => submit()} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
         </DialogFooter>
       </DialogContent>
 
@@ -853,6 +934,21 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             <Button variant="outline" onClick={() => removeScoped("forward")}>Este e os próximos</Button>
             <Button variant="destructive" onClick={() => removeScoped("all")}>Todos os eventos da recorrência</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editScopeOpen} onOpenChange={setEditScopeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar agendamento recorrente</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Este agendamento faz parte de uma série. Aplicar as alterações em:</p>
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:items-stretch">
+            <Button variant="outline" onClick={() => submit("one")}>Apenas este evento</Button>
+            <Button variant="outline" onClick={() => submit("forward")}>Este e os próximos</Button>
+            <Button variant="outline" onClick={() => submit("all")}>Todos os eventos da recorrência</Button>
+          </DialogFooter>
+          <p className="text-xs text-muted-foreground">Data e status mudam só neste evento. Horário, paciente, duração, modalidade, valor e observações vão para os demais.</p>
         </DialogContent>
       </Dialog>
 
