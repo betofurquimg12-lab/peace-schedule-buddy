@@ -146,22 +146,17 @@ export const FechamentoTab = ({ appts, month }: Props) => {
     // Mensagem de fechamento (formato consolidado)
     let body = `Oi, ${firstName}! Segue o resumo das sessões de ${monthLabel}:\n\n${lines}\n\nTotal: ${formatBRL(total)}`;
 
-    // Se o template tiver instruções de PIX, anexa
-    const tplRendered = renderTemplate(tpl.body, {
-      primeiro_nome: firstName,
-      valor: formatBRL(total),
-    });
-    const pixMatch = tplRendered.match(/PIX[\s\S]*$/i);
-    if (pixMatch) {
-      body += `\n\n${pixMatch[0]}`;
-    }
-
-    // Se o paciente tem link de pagamento cadastrado, prioriza esse link
     const link = (g.payment_link ?? "").trim();
-    if (link && !body.includes(link)) {
-      body += `\n\nLink de pagamento: ${link}`;
+    if (link) {
+      body += `\n\nPagamento no cartão pelo link:\n${link}`;
+    } else {
+      const tplRendered = renderTemplate(tpl.body, {
+        primeiro_nome: firstName,
+        valor: formatBRL(total),
+      });
+      const pixMatch = tplRendered.match(/PIX[\s\S]*$/i);
+      if (pixMatch) body += `\n\n${pixMatch[0]}`;
     }
-
 
     window.open(buildWaUrl(g.phone, body), "_blank", "noopener,noreferrer");
     setCharged((c) => ({ ...c, [g.id]: new Date().toISOString() }));

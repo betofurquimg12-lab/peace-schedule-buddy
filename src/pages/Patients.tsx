@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, MessageCircle, Pencil } from "lucide-react";
 import { formatBRL, buildWaUrl } from "@/lib/format";
 import { PatientFormDialog } from "@/components/patients/PatientFormDialog";
+import { PaymentLinkExpiryBadge } from "@/components/patients/PaymentLinkExpiryBadge";
 
 const Patients = () => {
   const [list, setList] = useState<any[]>([]);
@@ -18,7 +19,7 @@ const Patients = () => {
   const load = async () => {
     const { data } = await supabase
       .from("patients")
-      .select("id, full_name, phone, email, default_session_price, active")
+      .select("id, full_name, phone, email, default_session_price, active, payment_link, payment_link_expires_at")
       .order("full_name");
     setList(data ?? []);
   };
@@ -56,7 +57,10 @@ const Patients = () => {
         {filtered.map((p) => (
           <Card key={p.id} className="p-4 flex items-center justify-between gap-3">
             <Link to={`/pacientes/${p.id}`} className="flex-1 min-w-0">
-              <div className="font-medium truncate">{p.full_name}</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="font-medium truncate">{p.full_name}</div>
+                <PaymentLinkExpiryBadge link={p.payment_link} expiresAt={p.payment_link_expires_at} />
+              </div>
               <div className="text-xs text-muted-foreground truncate">
                 {[p.phone, p.email].filter(Boolean).join(" · ")} · Sessão {formatBRL(Number(p.default_session_price))}
               </div>

@@ -46,21 +46,17 @@ export const buildSessionWaUrl = (opts: BaseOpts & { phone?: string | null }) =>
 export const buildSessionWaUrlAsync = async (opts: BaseOpts & { phone?: string | null }) =>
   buildWaUrl(opts.phone, await buildSessionReminderMessageAsync(opts));
 
-/** Mensagem de cobrança — usa template `wa_charge`.
- *  Se o paciente tiver um `paymentLink` cadastrado, ele é injetado
- *  no placeholder `{link_pagamento}`. Caso o template não use o
- *  placeholder, o link é anexado ao final da mensagem. Se o paciente
- *  não tiver link cadastrado, mantém o corpo original do template. */
+/** Cobrança: se o paciente tem `paymentLink`, usa `wa_charge_card` (cartão);
+ *  senão, `wa_charge` (PIX). Nunca mistura os dois. */
 export const buildChargeMessageAsync = async (opts: BaseOpts) => {
-  const tpl = await loadTemplate("wa_charge");
+  const link = (opts.paymentLink ?? "").trim();
+  const tpl = await loadTemplate(link ? "wa_charge_card" : "wa_charge");
   const vars = buildVarsForAppointment(opts);
   const rendered = renderTemplate(tpl.body, vars);
-  const link = (opts.paymentLink ?? "").trim();
-  if (!link) return rendered;
-  if (tpl.body.includes("{link_pagamento}") || rendered.includes(link)) {
-    return rendered;
+  if (link && !rendered.includes(link)) {
+    return `${rendered}\n\n${link}`;
   }
-  return `${rendered}\n\nLink de pagamento: ${link}`;
+  return rendered;
 };
 
 export const buildChargeWaUrlAsync = async (

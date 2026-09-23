@@ -28,6 +28,7 @@ export const MessageTemplatesCard = () => {
   const bodyRefs = useRef<Record<TemplateKey, HTMLTextAreaElement | null>>({
     wa_reminder: null,
     wa_charge: null,
+    wa_charge_card: null,
     email_confirmation: null,
     email_reminder: null,
   });
