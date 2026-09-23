@@ -4,6 +4,7 @@ import { formatBRL, formatDateBR, formatTimeBR } from "./format";
 export type TemplateKey =
   | "wa_reminder"
   | "wa_charge"
+  | "wa_charge_card"
   | "email_confirmation"
   | "email_reminder";
 
@@ -34,6 +35,15 @@ export const TEMPLATE_DEFS: TemplateDef[] = [
       "Oi, {primeiro_nome}! Passando o valor da sessão de {data} às {hora}: {valor}. Pode pagar via PIX para a chave: <coloque sua chave PIX aqui>. Obrigada!",
     description:
       "Mensagem enviada ao clicar no botão $ na agenda. Inclua sua chave PIX no texto.",
+  },
+  {
+    key: "wa_charge_card",
+    label: "WhatsApp · cobrança / cartão",
+    hasSubject: false,
+    defaultBody:
+      "Oi, {primeiro_nome}! Tudo bem?\n\nSegue o valor da sessão de {data}, às {hora}: *{valor}*.\n\nPagamento no cartão pelo link:\n{link_pagamento}\n\nQualquer dúvida, é só me chamar. Obrigada!",
+    description:
+      "Enviada no botão $ quando o paciente tem link de pagamento cadastrado. Use {link_pagamento}.",
   },
   {
     key: "email_confirmation",

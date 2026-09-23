@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PaymentLinkExpiryBadge } from "@/components/patients/PaymentLinkExpiryBadge";
 
 const schema = z
   .object({
@@ -34,6 +35,7 @@ const schema = z
       .refine((v) => !v || /^https?:\/\/\S+$/i.test(v), {
         message: "Informe uma URL começando com http:// ou https://",
       }),
+    payment_link_expires_at: z.string().optional().or(z.literal("")),
     main_complaint: z.string().trim().max(2000).optional().or(z.literal("")),
     history: z.string().trim().max(5000).optional().or(z.literal("")),
     notes: z.string().trim().max(5000).optional().or(z.literal("")),
@@ -67,6 +69,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     responsible_phone: "",
     default_session_price: 0,
     payment_link: "",
+    payment_link_expires_at: "",
     main_complaint: "",
     history: "",
     notes: "",
@@ -89,6 +92,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
         responsible_phone: patient.responsible_phone ?? "",
         default_session_price: patient.default_session_price ?? 0,
         payment_link: patient.payment_link ?? "",
+        payment_link_expires_at: patient.payment_link_expires_at ?? "",
         main_complaint: patient.main_complaint ?? "",
         history: patient.history ?? "",
         notes: patient.notes ?? "",
@@ -98,7 +102,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       setForm({
         full_name: "", phone: "", email: "", cpf: "", birth_date: "", address: "",
         city: "", state: "", country: "Brasil",
-        responsible_name: "", responsible_phone: "", default_session_price: 0, payment_link: "",
+        responsible_name: "", responsible_phone: "", default_session_price: 0, payment_link: "", payment_link_expires_at: "",
         main_complaint: "", history: "", notes: "", emite_nota: false,
       });
     }
@@ -127,6 +131,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       responsible_phone: parsed.data.responsible_phone || null,
       default_session_price: parsed.data.default_session_price,
       payment_link: parsed.data.payment_link || null,
+      payment_link_expires_at: parsed.data.payment_link ? (parsed.data.payment_link_expires_at || null) : null,
       emite_nota: !!parsed.data.emite_nota,
     };
     if (isOwner) {
@@ -176,7 +181,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
               <Label htmlFor="emite_nota" className="text-sm font-normal">Emite nota fiscal</Label>
             </div>
             <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
-            <Field label="Link de pagamento (Pix, boleto, checkout...)">
+            <Field label="Link de pagamento (cartão)">
               <Input
                 type="url"
                 inputMode="url"
@@ -185,6 +190,18 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
                 onChange={(e) => set("payment_link", e.target.value)}
               />
             </Field>
+            {form.payment_link && (
+              <Field label="Validade do link (opcional)">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    type="date"
+                    value={form.payment_link_expires_at}
+                    onChange={(e) => set("payment_link_expires_at", e.target.value)}
+                  />
+                  <PaymentLinkExpiryBadge link={form.payment_link} expiresAt={form.payment_link_expires_at} />
+                </div>
+              </Field>
+            )}
             <Field label="Endereço"><Input value={form.address} onChange={(e) => set("address", e.target.value)} /></Field>
             <div className="grid sm:grid-cols-3 gap-3">
               <Field label="Cidade"><Input value={form.city} onChange={(e) => set("city", e.target.value)} /></Field>

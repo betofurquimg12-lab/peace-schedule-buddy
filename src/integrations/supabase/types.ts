@@ -837,6 +837,7 @@ export type Database = {
           main_complaint: string | null
           notes: string | null
           payment_link: string | null
+          payment_link_expires_at: string | null
           phone: string | null
           responsible_name: string | null
           responsible_phone: string | null
@@ -861,6 +862,7 @@ export type Database = {
           main_complaint?: string | null
           notes?: string | null
           payment_link?: string | null
+          payment_link_expires_at?: string | null
           phone?: string | null
           responsible_name?: string | null
           responsible_phone?: string | null
@@ -885,6 +887,7 @@ export type Database = {
           main_complaint?: string | null
           notes?: string | null
           payment_link?: string | null
+          payment_link_expires_at?: string | null
           phone?: string | null
           responsible_name?: string | null
           responsible_phone?: string | null
