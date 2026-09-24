@@ -33,6 +33,7 @@ export type Database = {
           reminder_popup_minutes: number
           slot_minutes: number
           start_time: string
+          status_colors: Json
           updated_at: string
           weekdays: number[]
         }
@@ -54,6 +55,7 @@ export type Database = {
           reminder_popup_minutes?: number
           slot_minutes?: number
           start_time?: string
+          status_colors?: Json
           updated_at?: string
           weekdays?: number[]
         }
@@ -75,6 +77,7 @@ export type Database = {
           reminder_popup_minutes?: number
           slot_minutes?: number
           start_time?: string
+          status_colors?: Json
           updated_at?: string
           weekdays?: number[]
         }

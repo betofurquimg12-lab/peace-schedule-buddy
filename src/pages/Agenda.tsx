@@ -11,6 +11,7 @@ import { WhatsAppExternalDialog } from "@/components/agenda/WhatsAppExternalDial
 import { formatBRL } from "@/lib/format";
 import { buildSessionWaUrlAsync, buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 import { Badge } from "@/components/ui/badge";
+import { DEFAULT_STATUS_COLORS, mergeStatusColors, STATUS_LABELS, STATUS_ORDER, textColorFor, type ApptStatus } from "@/lib/statusColors";
 
 const openWaForAppointment = async (a: any, kind: "reminder" | "charge") => {
   const opts = {
@@ -60,6 +61,8 @@ const Agenda = () => {
   const [presetSlot, setPresetSlot] = useState<Date | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [waDialog, setWaDialog] = useState<any>(null);
+  const [statusColors, setStatusColors] = useState(DEFAULT_STATUS_COLORS);
+  const [statusFilter, setStatusFilter] = useState<ApptStatus[]>([]);
   const [settings, setSettings] = useState<{ weekdays: number[]; startHour: number; endHour: number }>({
     weekdays: [1, 2, 3, 4, 5],
     startHour: 7,
@@ -70,10 +73,11 @@ const Agenda = () => {
     (async () => {
       const { data } = await supabase
         .from("agenda_settings")
-        .select("weekdays, start_time, end_time")
+        .select("weekdays, start_time, end_time, status_colors")
         .limit(1)
         .maybeSingle();
       if (data) {
+        setStatusColors(mergeStatusColors((data as any).status_colors));
         const sh = parseInt(String(data.start_time).slice(0, 2), 10);
         const eh = parseInt(String(data.end_time).slice(0, 2), 10);
         setSettings({
@@ -111,6 +115,18 @@ const Agenda = () => {
     setAppts(data ?? []);
   };
   useEffect(() => { void load(); }, [refDate]);
+
+  const visibleAppts = useMemo(
+    () => statusFilter.length === 0
+      ? appts
+      : appts.filter((a) => !a.is_block && !(a.source === "google" && !a.is_vittude && !a.converted_to_particular) && statusFilter.includes(a.status)),
+    [appts, statusFilter]
+  );
+
+  const styleFor = (a: any) => {
+    const bg = statusColors[(a.status as ApptStatus)] ?? statusColors.scheduled;
+    return { backgroundColor: bg, color: textColorFor(bg) };
+  };
 
   // Sync sob demanda: não bloqueia a tela. Renderiza o cache, sincroniza em
   // background e recarrega. Throttle de 5 min para não disparar a cada navegação.
@@ -215,10 +231,29 @@ const Agenda = () => {
         <div className="text-sm font-medium">{fmtRange}</div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {STATUS_ORDER.map((st) => {
+          const active = statusFilter.includes(st);
+          const dim = statusFilter.length > 0 && !active;
+          return (
+            <button key={st} type="button"
+              onClick={() => setStatusFilter((f) => f.includes(st) ? f.filter((x) => x !== st) : [...f, st])}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${active ? "ring-2 ring-primary/60 border-primary/40" : ""} ${dim ? "opacity-50" : ""}`}
+              title={`Filtrar: ${STATUS_LABELS[st]}`}>
+              <span className="h-3 w-3 rounded-full border border-foreground/10" style={{ backgroundColor: statusColors[st] }} />
+              {STATUS_LABELS[st]}
+            </button>
+          );
+        })}
+        {statusFilter.length > 0 && (
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setStatusFilter([])}>Limpar filtro</Button>
+        )}
+      </div>
+
       {/* Mobile: list view */}
       <div className="md:hidden space-y-4">
         {days.map((d) => {
-          const dayAppts = appts.filter((a) => sameDay(new Date(a.starts_at), d));
+          const dayAppts = visibleAppts.filter((a) => sameDay(new Date(a.starts_at), d));
           return (
             <div key={d.toISOString()}>
               <div className={`text-xs uppercase tracking-wide mb-2 ${sameDay(d, new Date()) ? "text-primary font-semibold" : "text-muted-foreground"}`}>
@@ -244,7 +279,7 @@ const Agenda = () => {
                         ? "border-dashed bg-muted/30"
                         : "";
                     return (
-                      <Card key={a.id} className={`p-3 cursor-pointer ${cardClass}`} onClick={() => { setEditing(a); setOpen(true); }}>
+                      <Card key={a.id} className={`p-3 cursor-pointer ${cardClass}`} style={!isBlock && !ext ? styleFor(a) : undefined} onClick={() => { setEditing(a); setOpen(true); }}>
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="font-medium text-sm flex items-center gap-1.5">
@@ -335,7 +370,7 @@ const Agenda = () => {
             <div key={h} className={`grid border-b min-h-[56px] ${isCurrentHour ? "bg-primary/5" : ""}`} style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
               <div className={`text-xs p-2 text-right ${isCurrentHour ? "text-primary font-semibold" : "text-muted-foreground"}`}>{String(h).padStart(2, "0")}:00</div>
               {days.map((d) => {
-                const slotAppts = appts.filter((a) => {
+                const slotAppts = visibleAppts.filter((a) => {
                   const dt = new Date(a.starts_at);
                   return sameDay(dt, d) && dt.getHours() === h;
                 });
@@ -354,7 +389,7 @@ const Agenda = () => {
                         ? "bg-foreground/85 text-background hover:bg-foreground"
                         : ext
                           ? "bg-muted text-muted-foreground border border-dashed"
-                          : "bg-primary/15 hover:bg-primary/25 text-primary";
+                          : "hover:brightness-95";
                       const HOUR_PX = 56;
                       const startDt = new Date(a.starts_at);
                       const endDt = new Date(a.ends_at);
@@ -370,6 +405,7 @@ const Agenda = () => {
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
                             className={`block w-full h-full text-left rounded-md px-2 py-1 pr-14 text-xs overflow-hidden ${btnClass}`}
+                             style={!isBlock && !ext ? styleFor(a) : undefined}
                           >
                             <div className="font-medium truncate flex items-center gap-1">
                               {ext && <span>🔒</span>}

@@ -13,6 +13,7 @@ import { Trash2, Mail } from "lucide-react";
 import { AgendaSettingsCard } from "@/components/settings/AgendaSettingsCard";
 import { GoogleCalendarSyncCard } from "@/components/settings/GoogleCalendarSyncCard";
 import { MessageTemplatesCard } from "@/components/settings/MessageTemplatesCard";
+import { StatusColorsCard } from "@/components/settings/StatusColorsCard";
 
 const Settings = () => {
   const { role, user } = useAuth();
@@ -117,6 +118,8 @@ const Settings = () => {
           </Card>
 
           <AgendaSettingsCard />
+
+          <StatusColorsCard />
 
           <MessageTemplatesCard />
 
