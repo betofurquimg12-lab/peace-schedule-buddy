@@ -100,6 +100,20 @@ export const ExternalEventDialog = ({
             <span className="font-medium">Converter para atendimento particular</span>
           </label>
 
+          <Field label="Alerta no card">
+            <Input maxLength={25} placeholder="Ex.: Não cobrar" value={form.alert ?? appointment.alert ?? ""} onChange={(e) => set("alert", e.target.value)} />
+            <div className="flex items-center justify-between">
+              <div className="flex flex-wrap gap-1">
+                {["Não cobrar", "Emitir nota", "Confirmar horário"].map((preset) => (
+                  <button key={preset} type="button" className="rounded-full border px-2 py-0.5 text-[11px] hover:bg-muted" onClick={() => set("alert", preset)}>
+                    {preset}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[11px] text-muted-foreground">{(form.alert ?? appointment.alert ?? "").length}/25</span>
+            </div>
+          </Field>
+
           <Field label="Observações">
             <Textarea
               rows={3}
@@ -171,7 +185,8 @@ export const ExternalEventDialog = ({
                   patient_id: form.patient_id,
                   price: Number(form.price),
                   notes: form.notes || null,
-                }).eq("id", appointment.id);
+                  alert: form.alert?.trim() || null,
+                } as any).eq("id", appointment.id);
 
                 if (error) {
                   setSaving(false);
@@ -210,11 +225,11 @@ export const ExternalEventDialog = ({
               setSaving(true);
               const { error } = await supabase
                 .from("appointments")
-                .update({ notes: form.notes || null })
+                .update({ notes: form.notes || null, alert: form.alert?.trim() || null } as any)
                 .eq("id", appointment.id);
               setSaving(false);
               if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-              toast({ title: "Observações salvas" });
+              toast({ title: "Salvo" });
               onSaved();
               onOpenChange(false);
             }} disabled={saving}>

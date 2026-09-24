@@ -48,6 +48,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     occurrences: 4,
     recurrence_end_date: "",
     notes: "",
+    alert: "",
     payment_status: "pending",
     payment_date: toLocalDate(new Date()),
     payment_method: "pix",
@@ -123,6 +124,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         occurrences,
         recurrence_end_date: recurrenceEndDate,
         notes: appointment.notes ?? "",
+        alert: appointment.alert ?? "",
         payment_status: appointment.is_vittude ? "vittude" : "pending",
         payment_date: toLocalDate(s),
         payment_method: "pix",
@@ -148,6 +150,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         occurrences: 4,
         recurrence_end_date: "",
         notes: "",
+        alert: "",
         payment_status: "pending",
         payment_date: toLocalDate(s),
         payment_method: "pix",
@@ -260,8 +263,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         patient_id: parsed.data.patient_id || null,
         price: parsed.data.price,
         notes: parsed.data.notes || null,
+        alert: parsed.data.alert?.trim() || null,
         status: parsed.data.status,
-      }).eq("id", appointment.id);
+      } as any).eq("id", appointment.id);
 
       if (error) {
         setSaving(false);
@@ -310,10 +314,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         price: isBlock ? 0 : parsed.data.price,
         status: parsed.data.status,
         notes: parsed.data.notes || null,
+        alert: parsed.data.alert?.trim() || null,
         is_block: isBlock,
         block_reason: isBlock ? (form.block_reason || null) : null,
         is_vittude: isVittude,
-      }).eq("id", appointment.id);
+      } as any).eq("id", appointment.id);
       if (error) {
         setSaving(false);
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -380,7 +385,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             modality: parsed.data.modality,
             price: isBlock ? 0 : parsed.data.price,
             notes: parsed.data.notes || null,
-          }).eq("id", s.id);
+            alert: parsed.data.alert?.trim() || null,
+          } as any).eq("id", s.id);
           if (updateError) {
             setSaving(false);
             return toast({ title: "Erro", description: updateError.message, variant: "destructive" });
@@ -456,6 +462,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           recurrence_end_date: recurrenceEndDate,
           source: "system",
           notes: parsed.data.notes || null,
+          alert: parsed.data.alert?.trim() || null,
           created_by: user?.id,
           is_block: isBlock,
           block_reason: isBlock ? (form.block_reason || null) : null,
@@ -463,7 +470,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         };
       });
 
-      const { data: inserted, error } = await supabase.from("appointments").insert(rows).select("id, starts_at, ends_at");
+      const { data: inserted, error } = await supabase.from("appointments").insert(rows as any).select("id, starts_at, ends_at");
       console.log("[AppointmentDialog] insert result", { requested: rows.length, inserted: inserted?.length, error });
       if (error) {
         setSaving(false);
@@ -839,6 +846,22 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 </div>
               )}
             </div>
+          )}
+
+          {!form.is_block && (
+            <Field label="Alerta no card">
+              <Input maxLength={25} placeholder="Ex.: Não cobrar" value={form.alert} onChange={(e) => set("alert", e.target.value)} />
+              <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-1">
+                  {["Não cobrar", "Emitir nota", "Confirmar horário"].map((preset) => (
+                    <button key={preset} type="button" className="rounded-full border px-2 py-0.5 text-[11px] hover:bg-muted" onClick={() => set("alert", preset)}>
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[11px] text-muted-foreground">{form.alert.length}/25</span>
+              </div>
+            </Field>
           )}
 
           <Field label="Observações"><Textarea rows={2} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>

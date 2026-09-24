@@ -18,6 +18,7 @@ export const schema = z.object({
   occurrences: z.coerce.number().int().min(1).max(52),
   recurrence_end_date: z.string().optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
+  alert: z.string().max(25).optional().or(z.literal("")),
   is_block: z.boolean().optional(),
   block_reason: z.string().max(500).optional().or(z.literal("")),
 });
