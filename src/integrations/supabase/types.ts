@@ -85,6 +85,7 @@ export type Database = {
       }
       appointments: {
         Row: {
+          alert: string | null
           block_reason: string | null
           converted_to_particular: boolean
           created_at: string
@@ -115,6 +116,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          alert?: string | null
           block_reason?: string | null
           converted_to_particular?: boolean
           created_at?: string
@@ -145,6 +147,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          alert?: string | null
           block_reason?: string | null
           converted_to_particular?: boolean
           created_at?: string
