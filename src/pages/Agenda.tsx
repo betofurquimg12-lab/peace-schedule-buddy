@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign, RefreshCw } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { WhatsAppExternalDialog } from "@/components/agenda/WhatsAppExternalDialog";
@@ -108,7 +108,7 @@ const Agenda = () => {
     try { await supabase.rpc("mark_past_appointments_done"); } catch { /* ignore */ }
     const { data } = await supabase
       .from("appointments")
-      .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, google_calendar_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
+      .select("id, starts_at, ends_at, price, status, alert, meet_link, source, external_summary, google_event_id, google_calendar_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
       .gte("starts_at", start.toISOString())
       .lt("starts_at", end.toISOString())
       .order("starts_at");
@@ -154,7 +154,7 @@ const Agenda = () => {
     (async () => {
       const { data } = await supabase
         .from("appointments")
-        .select("id, starts_at, ends_at, price, status, meet_link, source, external_summary, google_event_id, google_calendar_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
+        .select("id, starts_at, ends_at, price, status, alert, meet_link, source, external_summary, google_event_id, google_calendar_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
         .eq("id", apptId)
         .maybeSingle();
       if (data) {
@@ -289,6 +289,12 @@ const Agenda = () => {
                               {isBlock && <Badge variant="outline" className="text-[10px] border-background/40 text-background">Bloqueado</Badge>}
                             </div>
                             <div className={`text-xs ${isBlock ? "text-background/70" : "text-muted-foreground"}`}>{hm(a.starts_at)} – {hm(a.ends_at)}</div>
+                            {!isBlock && a.alert && (
+                              <span title={a.alert} className="mt-1 inline-flex w-fit max-w-full min-w-0 items-center gap-0.5 rounded bg-background/85 px-1 py-px text-[10px] font-semibold text-amber-800 border border-amber-300">
+                                <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" />
+                                <span className="truncate">{a.alert}</span>
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             {!isBlock && (
@@ -413,7 +419,15 @@ const Agenda = () => {
                               {isVittude && <Badge variant="secondary" className="text-[9px] py-0 px-1 leading-tight">Vittude</Badge>}
                               {isBlock && <Badge variant="outline" className="text-[9px] py-0 px-1 leading-tight border-background/40 text-background">Bloqueado</Badge>}
                             </div>
-                            <div className="opacity-80">{hm(a.starts_at)} – {hm(a.ends_at)}</div>
+                            <div className="flex items-center gap-1.5 min-w-0 -mr-12">
+                              <span className="opacity-80 shrink-0">{hm(a.starts_at)} – {hm(a.ends_at)}</span>
+                              {!isBlock && a.alert && (
+                                <span title={a.alert} className="inline-flex min-w-0 items-center gap-0.5 rounded bg-background/85 px-1 py-px text-[10px] font-semibold text-amber-800 border border-amber-300">
+                                  <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-amber-600" />
+                                  <span className="truncate">{a.alert}</span>
+                                </span>
+                              )}
+                            </div>
                           </button>
                           <div className="absolute top-1 right-1 flex items-center gap-0.5">
                             {!isBlock && (
