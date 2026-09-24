@@ -385,7 +385,6 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
             modality: parsed.data.modality,
             price: isBlock ? 0 : parsed.data.price,
             notes: parsed.data.notes || null,
-            alert: parsed.data.alert?.trim() || null,
           } as any).eq("id", s.id);
           if (updateError) {
             setSaving(false);
@@ -447,7 +446,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       const groupId = dates.length > 1 ? crypto.randomUUID() : null;
       const recurrenceEndDate = parsed.data.recurrence_mode === "until" ? (parsed.data.recurrence_end_date || null) : null;
 
-      const rows = dates.map((s) => {
+      const rows = dates.map((s, idx) => {
         const e = new Date(s.getTime() + parsed.data.duration * 60000);
         return {
           patient_id: isBlock ? null : (parsed.data.patient_id || null),
@@ -462,7 +461,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           recurrence_end_date: recurrenceEndDate,
           source: "system",
           notes: parsed.data.notes || null,
-          alert: parsed.data.alert?.trim() || null,
+          alert: idx === 0 ? (parsed.data.alert?.trim() || null) : null,
           created_by: user?.id,
           is_block: isBlock,
           block_reason: isBlock ? (form.block_reason || null) : null,
@@ -861,6 +860,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 </div>
                 <span className="text-[11px] text-muted-foreground">{form.alert.length}/25</span>
               </div>
+              <p className="text-[11px] text-muted-foreground">Aparece só nesta sessão.</p>
             </Field>
           )}
 
