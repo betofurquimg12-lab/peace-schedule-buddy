@@ -65,7 +65,7 @@ const Settings = () => {
   };
 
   return (
-    <>
+    <div className="max-w-4xl">
       <PageHeader title="Configurações" description="Equipe e integrações" />
 
       {role !== "owner" ? (
@@ -141,7 +141,7 @@ const Settings = () => {
           </Card>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
