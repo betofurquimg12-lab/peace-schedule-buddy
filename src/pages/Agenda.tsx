@@ -64,8 +64,10 @@ const Agenda = () => {
   const [statusFilter, setStatusFilter] = useState<ApptStatus[]>([]);
   const gridRef = useRef<HTMLDivElement>(null);
   const gridHeaderRef = useRef<HTMLDivElement>(null);
+  const scrolledWeekRef = useRef<string | null>(null);
   const [gridHeight, setGridHeight] = useState("calc(100vh - 160px)");
-  const [hourPx, setHourPx] = useState(56);
+  const [hourPx, setHourPx] = useState(72);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settings, setSettings] = useState<{ weekdays: number[]; startHour: number; endHour: number }>({
     weekdays: [1, 2, 3, 4, 5],
     startHour: 7,
@@ -89,6 +91,7 @@ const Agenda = () => {
           endHour: isNaN(eh) ? 20 : Math.max(sh + 1, eh),
         });
       }
+      setSettingsLoaded(true);
     })();
   }, []);
 
@@ -112,7 +115,15 @@ const Agenda = () => {
       const top = grid.getBoundingClientRect().top;
       const availableHeight = Math.max(0, window.innerHeight - top - 16);
       setGridHeight(`calc(100vh - ${Math.max(0, top)}px - 16px)`);
-      setHourPx(Math.max(36, Math.floor((availableHeight - header.getBoundingClientRect().height) / Math.max(1, hours.length))));
+      const nextHourPx = Math.max(72, Math.floor((availableHeight - header.getBoundingClientRect().height) / Math.max(1, hours.length)));
+      setHourPx(nextHourPx);
+      const weekKey = refDate.toISOString();
+      if (settingsLoaded && scrolledWeekRef.current !== weekKey) {
+        const currentHour = new Date().getHours();
+        const targetHour = currentHour >= settings.startHour && currentHour <= settings.endHour ? currentHour : 8;
+        grid.scrollTop = Math.max(0, (targetHour - settings.startHour) * nextHourPx);
+        scrolledWeekRef.current = weekKey;
+      }
     };
     recalculate();
     const observer = new ResizeObserver(recalculate);
@@ -123,7 +134,7 @@ const Agenda = () => {
       observer.disconnect();
       window.removeEventListener("resize", recalculate);
     };
-  }, [hours.length]);
+  }, [hours.length, refDate, settings.startHour, settings.endHour, settingsLoaded]);
 
   const load = async () => {
     const start = new Date(refDate); start.setHours(0, 0, 0, 0);
@@ -299,7 +310,7 @@ const Agenda = () => {
                           <div>
                             <div className="font-medium text-sm flex items-center gap-1.5">
                               {ext && <span title="Vindo do Google Calendar">🔒</span>}
-                              <span className="truncate">{displayName}</span>
+                              <span className="truncate text-sm">{displayName}</span>
                               {isVittude && <Badge variant="secondary" className="text-[10px]">Vittude</Badge>}
                               {isBlock && <Badge variant="outline" className="text-[10px] border-background/40 text-background">Bloqueado</Badge>}
                             </div>
