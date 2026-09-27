@@ -310,7 +310,7 @@ const Agenda = () => {
                           <div>
                             <div className="font-medium text-sm flex items-center gap-1.5">
                               {ext && <span title="Vindo do Google Calendar">🔒</span>}
-                              <span className="truncate text-sm">{displayName}</span>
+                              <span className="truncate">{displayName}</span>
                               {isVittude && <Badge variant="secondary" className="text-[10px]">Vittude</Badge>}
                               {isBlock && <Badge variant="outline" className="text-[10px] border-background/40 text-background">Bloqueado</Badge>}
                             </div>
@@ -440,7 +440,7 @@ const Agenda = () => {
                           >
                             <div className="font-medium truncate flex items-center gap-1">
                               {ext && <span>🔒</span>}
-                              <span className="truncate">{displayName}</span>
+                              <span className="truncate text-sm">{displayName}</span>
                               {isVittude && <Badge variant="secondary" className="text-[9px] py-0 px-1 leading-tight">Vittude</Badge>}
                               {isBlock && <Badge variant="outline" className="text-[9px] py-0 px-1 leading-tight border-background/40 text-background">Bloqueado</Badge>}
                             </div>
