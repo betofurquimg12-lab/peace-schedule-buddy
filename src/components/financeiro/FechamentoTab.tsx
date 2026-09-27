@@ -37,6 +37,7 @@ export const FechamentoTab = ({ appts, month }: Props) => {
           !a.is_vittude &&
           a.status !== "canceled" &&
           a.status !== "no_show" &&
+          !a.payment?.[0]?.paid_at &&
           a.patient?.id,
       )
       .forEach((a) => {
