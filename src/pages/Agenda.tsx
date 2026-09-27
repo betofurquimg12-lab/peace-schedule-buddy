@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign, RefreshCw, AlertTriangle } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign, RefreshCw, AlertTriangle, CalendarDays } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { WhatsAppExternalDialog } from "@/components/agenda/WhatsAppExternalDialog";
@@ -63,6 +62,10 @@ const Agenda = () => {
   const [waDialog, setWaDialog] = useState<any>(null);
   const [statusColors, setStatusColors] = useState(DEFAULT_STATUS_COLORS);
   const [statusFilter, setStatusFilter] = useState<ApptStatus[]>([]);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const gridHeaderRef = useRef<HTMLDivElement>(null);
+  const [gridHeight, setGridHeight] = useState("calc(100vh - 160px)");
+  const [hourPx, setHourPx] = useState(56);
   const [settings, setSettings] = useState<{ weekdays: number[]; startHour: number; endHour: number }>({
     weekdays: [1, 2, 3, 4, 5],
     startHour: 7,
@@ -100,6 +103,27 @@ const Agenda = () => {
     () => Array.from({ length: Math.max(0, settings.endHour - settings.startHour + 1) }, (_, i) => settings.startHour + i),
     [settings.startHour, settings.endHour]
   );
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    const header = gridHeaderRef.current;
+    if (!grid || !header) return;
+    const recalculate = () => {
+      const top = grid.getBoundingClientRect().top;
+      const availableHeight = Math.max(0, window.innerHeight - top - 16);
+      setGridHeight(`calc(100vh - ${Math.max(0, top)}px - 16px)`);
+      setHourPx(Math.max(36, Math.floor((availableHeight - header.getBoundingClientRect().height) / Math.max(1, hours.length))));
+    };
+    recalculate();
+    const observer = new ResizeObserver(recalculate);
+    observer.observe(grid);
+    observer.observe(header);
+    window.addEventListener("resize", recalculate);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", recalculate);
+    };
+  }, [hours.length]);
 
   const load = async () => {
     const start = new Date(refDate); start.setHours(0, 0, 0, 0);
@@ -191,47 +215,16 @@ const Agenda = () => {
   const weekStart = refDate;
   const weekEnd = new Date(refDate); weekEnd.setDate(weekEnd.getDate() + 6);
   const fmtRange = `${weekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} – ${weekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`;
+  const isCurrentWeek = refDate.getTime() === startOfWeek(new Date()).getTime();
 
   return (
     <>
-      <PageHeader
-        title="Agenda"
-        description="Atendimentos agendados na semana"
-        action={
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={async () => {
-                setSyncing(true);
-              try {
-                const { data, error } = await supabase.functions.invoke("google-calendar-sync");
-                if (error) throw error;
-                markSynced();
-                toast({ title: "Sincronizado", description: `criados ${data?.created ?? 0}, atualizados ${data?.updated ?? 0}, removidos ${data?.deleted ?? 0}` });
-                await load();
-                } catch (e: any) {
-                  toast({ title: "Erro ao sincronizar", description: e?.message ?? String(e), variant: "destructive" });
-                } finally { setSyncing(false); }
-              }}
-              disabled={syncing}
-            >
-              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sincronizar
-            </Button>
-            <Button onClick={() => { setEditing(null); setPresetSlot(null); setOpen(true); }}><Plus className="h-4 w-4" /> Nova consulta</Button>
-          </div>
-        }
-      />
-
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => move(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" onClick={() => move(1)}><ChevronRight className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="sm" onClick={() => setRefDate(startOfWeek(new Date()))}>Hoje</Button>
-        </div>
-        <div className="text-sm font-medium">{fmtRange}</div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <h1 className="text-xl font-semibold mr-1">Agenda</h1>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => move(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => move(1)}><ChevronRight className="h-4 w-4" /></Button>
+        <Button variant="outline" size="sm" onClick={() => setRefDate(startOfWeek(new Date()))} disabled={isCurrentWeek}><CalendarDays className="h-4 w-4" /> Hoje</Button>
+        <div className="text-sm font-medium mr-1">{fmtRange}</div>
         {STATUS_ORDER.map((st) => {
           const active = statusFilter.includes(st);
           const dim = statusFilter.length > 0 && !active;
@@ -248,6 +241,28 @@ const Agenda = () => {
         {statusFilter.length > 0 && (
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setStatusFilter([])}>Limpar filtro</Button>
         )}
+        <div className="ml-auto flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setSyncing(true);
+              try {
+                const { data, error } = await supabase.functions.invoke("google-calendar-sync");
+                if (error) throw error;
+                markSynced();
+                toast({ title: "Sincronizado", description: `criados ${data?.created ?? 0}, atualizados ${data?.updated ?? 0}, removidos ${data?.deleted ?? 0}` });
+                await load();
+              } catch (e: any) {
+                toast({ title: "Erro ao sincronizar", description: e?.message ?? String(e), variant: "destructive" });
+              } finally { setSyncing(false); }
+            }}
+            disabled={syncing}
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sincronizar
+          </Button>
+          <Button size="sm" onClick={() => { setEditing(null); setPresetSlot(null); setOpen(true); }}><Plus className="h-4 w-4" /> Nova consulta</Button>
+        </div>
       </div>
 
       {/* Mobile: list view */}
@@ -348,8 +363,8 @@ const Agenda = () => {
 
       {/* Desktop: week grid */}
       <Card className="hidden md:block overflow-hidden">
-        <div className="max-h-[70vh] overflow-y-scroll">
-        <div className="grid border-b text-xs sticky top-0 bg-card z-10" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
+        <div ref={gridRef} className="overflow-y-auto" style={{ height: gridHeight }}>
+        <div ref={gridHeaderRef} className="grid border-b text-xs sticky top-0 bg-card z-10" style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
           <div />
           {days.map((d) => {
             const isToday = sameDay(d, new Date());
@@ -373,7 +388,7 @@ const Agenda = () => {
             const nowHour = new Date().getHours();
             const isCurrentHour = h === nowHour;
             return (
-            <div key={h} className={`grid border-b min-h-[56px] ${isCurrentHour ? "bg-primary/5" : ""}`} style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
+            <div key={h} className={`grid border-b ${isCurrentHour ? "bg-primary/5" : ""}`} style={{ gridTemplateColumns: `60px repeat(${days.length}, 1fr)`, height: hourPx }}>
               <div className={`text-xs p-2 text-right ${isCurrentHour ? "text-primary font-semibold" : "text-muted-foreground"}`}>{String(h).padStart(2, "0")}:00</div>
               {days.map((d) => {
                 const slotAppts = visibleAppts.filter((a) => {
@@ -383,7 +398,7 @@ const Agenda = () => {
                 const isToday = sameDay(d, new Date());
                 const isNowCell = isToday && isCurrentHour;
                 return (
-                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 min-w-0 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} style={{ minHeight: 56 }} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
+                  <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 min-w-0 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} style={{ height: hourPx }} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
                     {slotAppts.map((a, idx) => {
                       const ext = a.source === "google" && !a.is_vittude && !a.converted_to_particular;
                       const isBlock = !!a.is_block;
@@ -396,12 +411,11 @@ const Agenda = () => {
                         : ext
                           ? "bg-muted text-muted-foreground border border-dashed"
                           : "hover:brightness-95";
-                      const HOUR_PX = 56;
                       const startDt = new Date(a.starts_at);
                       const endDt = new Date(a.ends_at);
                       const durMin = Math.max(15, Math.round((+endDt - +startDt) / 60000));
-                      const topPx = (startDt.getMinutes() / 60) * HOUR_PX;
-                      const heightPx = Math.max(24, (durMin / 60) * HOUR_PX - 2);
+                      const topPx = (startDt.getMinutes() / 60) * hourPx;
+                      const heightPx = Math.max(24, (durMin / 60) * hourPx - 2);
                       return (
                         <div
                           key={a.id}
