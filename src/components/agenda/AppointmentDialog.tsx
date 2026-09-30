@@ -62,6 +62,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [editScopeOpen, setEditScopeOpen] = useState(false);
   const [scopeBusy, setScopeBusy] = useState<null | "one" | "forward" | "all">(null);
   const [revertOpen, setRevertOpen] = useState(false);
+  const [seriesPos, setSeriesPos] = useState<{ index: number; total: number } | null>(null);
   const initialRecurrenceRef = useRef<{ recurrence_mode: string; recurrence: string; occurrences: number; recurrence_end_date: string } | null>(null);
 
   const runScoped = async (scope: "one" | "forward" | "all", fn: () => Promise<unknown>) => {
@@ -106,6 +107,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
       const recurrenceMode = appointment.recurrence && appointment.recurrence !== "none" ? (appointment.recurrence_end_date ? "until" : "count") : "none";
       const recurrence = appointment.recurrence ?? "none";
       const occurrences = 4;
+      setSeriesPos(null);
       const recurrenceEndDate = appointment.recurrence_end_date ?? "";
       initialRecurrenceRef.current = {
         recurrence_mode: recurrenceMode,
@@ -135,8 +137,29 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         block_reason: appointment.block_reason ?? "",
         is_vittude: !!appointment.is_vittude,
       });
+      if (appointment.recurrence_group_id) {
+        void supabase
+          .from("appointments")
+          .select("id, starts_at")
+          .eq("recurrence_group_id", appointment.recurrence_group_id)
+          .order("starts_at", { ascending: true })
+          .then(({ data, error }) => {
+            if (error) return;
+            const index = (data ?? []).findIndex((item) => item.id === appointment.id) + 1;
+            const total = data?.length ?? 0;
+            if (index > 0) {
+              setSeriesPos({ index, total });
+              const remaining = total - index + 1;
+              if (initialRecurrenceRef.current) {
+                initialRecurrenceRef.current = { ...initialRecurrenceRef.current, occurrences: remaining };
+              }
+              setForm((f: any) => ({ ...f, occurrences: remaining }));
+            }
+          });
+      }
     } else {
       const s = presetStart ?? new Date();
+      setSeriesPos(null);
       initialRecurrenceRef.current = null;
       setExistingPayment(null);
       setForm((f: any) => ({
@@ -770,6 +793,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           {!isConverted && (
             <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
               <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorrência</div>
+              {seriesPos && <div className="text-sm font-medium">Sessão {seriesPos.index} de {seriesPos.total}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Tipo">
                   <Select value={form.recurrence_mode} onValueChange={onRecurrenceModeChange}>
