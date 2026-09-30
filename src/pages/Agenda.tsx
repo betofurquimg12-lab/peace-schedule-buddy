@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign, RefreshCw, AlertTriangle, CalendarDays } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MessageCircle, Video, DollarSign, RefreshCw, AlertTriangle, CalendarDays, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AppointmentDialog } from "@/components/agenda/AppointmentDialog";
 import { WhatsAppExternalDialog } from "@/components/agenda/WhatsAppExternalDialog";
@@ -311,6 +311,7 @@ const Agenda = () => {
                             <div className="font-medium text-sm flex items-center gap-1.5">
                               {ext && <span title="Vindo do Google Calendar">🔒</span>}
                               <span className="truncate">{displayName}</span>
+                              {a.recurrence_group_id && !isBlock && <span title="Sessão recorrente" className="inline-flex shrink-0"><Repeat className="h-3 w-3 opacity-70" /></span>}
                               {isVittude && <Badge variant="secondary" className="text-[10px]">Vittude</Badge>}
                               {isBlock && <Badge variant="outline" className="text-[10px] border-background/40 text-background">Bloqueado</Badge>}
                             </div>
@@ -441,6 +442,7 @@ const Agenda = () => {
                             <div className="font-medium truncate flex items-center gap-1">
                               {ext && <span>🔒</span>}
                               <span className="truncate text-sm">{displayName}</span>
+                              {a.recurrence_group_id && !isBlock && <span title="Sessão recorrente" className="inline-flex shrink-0"><Repeat className="h-3 w-3 opacity-70" /></span>}
                               {isVittude && <Badge variant="secondary" className="text-[9px] py-0 px-1 leading-tight">Vittude</Badge>}
                               {isBlock && <Badge variant="outline" className="text-[9px] py-0 px-1 leading-tight border-background/40 text-background">Bloqueado</Badge>}
                             </div>
