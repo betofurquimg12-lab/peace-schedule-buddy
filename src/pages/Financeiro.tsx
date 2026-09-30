@@ -101,7 +101,7 @@ const Financeiro = () => {
       // Pagos no mês
       supabase
         .from("payments")
-        .select("id, amount, paid_at, method, notes, appointment:appointments(id, starts_at, patient:patients(id, full_name))")
+        .select("id, amount, paid_at, method, notes, appointment:appointments(id, starts_at, is_vittude, patient:patients(id, full_name))")
         .gte("paid_at", startDate)
         .lt("paid_at", endDate)
         .order("paid_at", { ascending: false }),
@@ -120,31 +120,32 @@ const Financeiro = () => {
     setVittudeAll(normalize(vit.data ?? []).filter(
       (r: any) => (!(r.status === "canceled" || r.status === "no_show") || r.cobrar_ausencia === true),
     ));
-    setPaidMonth(paid.data ?? []);
+    setPaidMonth((paid.data ?? []).filter((p: any) => !p.appointment?.is_vittude));
   };
   useEffect(() => { void load(); }, [month]);
 
   // Sessões consideradas para o financeiro: ativas ou ausências marcadas para cobrança.
   const billable = appts.filter((a) => (!(a.status === "canceled" || a.status === "no_show") || a.cobrar_ausencia === true));
+  const billableParticular = billable.filter((a) => !a.is_vittude);
   const realized = billable; // mantém nome usado abaixo
-  const totalDone = billable.reduce((s, a) => s + Number(a.price || 0), 0);
+  const totalDone = billableParticular.reduce((s, a) => s + Number(a.price || 0), 0);
   // Recebido = pagamentos com paid_at preenchido (independe do status da sessão)
-  const totalReceived = billable.reduce(
+  const totalReceived = billableParticular.reduce(
     (s, a) => s + (a.payment?.[0]?.paid_at ? Number(a.payment[0].amount) : 0),
     0,
   );
   // Previsto no mês = pagamentos sem paid_at mas com due_date
-  const totalScheduled = billable.reduce(
+  const totalScheduled = billableParticular.reduce(
     (s, a) => s + (a.payment?.[0] && !a.payment[0].paid_at && a.payment[0].due_date ? Number(a.payment[0].amount) : 0),
     0,
   );
-  const totalPending = Math.max(0, totalDone - totalReceived - totalScheduled);
 
   const inSelectedMonth = (a: any) => {
     const startsAt = new Date(a.starts_at).getTime();
     return startsAt >= range.start.getTime() && startsAt < range.end.getTime();
   };
   const aReceberMonth = aReceberAll.filter(inSelectedMonth);
+  const totalAReceberMonth = aReceberMonth.reduce((s, a) => s + Number(a.price || 0), 0);
   const vittudeMonth = vittudeAll.filter(inSelectedMonth);
 
   const extraCredits = entries.filter((e) => e.type === "credit").reduce((s, e) => s + Number(e.amount), 0);
@@ -301,12 +302,11 @@ const Financeiro = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Stat label="Faturamento sessões" value={formatBRL(totalDone)} />
 
         <Stat label="Recebido" value={formatBRL(totalReceived)} tone="success" />
-        <Stat label="Previsto a receber" value={formatBRL(totalScheduled)} tone="warning" />
-        <Stat label="Sem definição" value={formatBRL(totalPending)} tone="warning" />
+        <Stat label="Previsto a receber" value={formatBRL(totalAReceberMonth)} tone="warning" />
         <Stat label="Caixa (recebido)" value={formatBRL(netResult)} tone={netResult >= 0 ? "success" : "warning"} />
       </div>
 
