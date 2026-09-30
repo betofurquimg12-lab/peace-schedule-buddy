@@ -228,31 +228,31 @@ export const FechamentoTab = ({ appts, month }: Props) => {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {chargedAt ? (
-                          <>
-                            <Badge className="bg-success/15 text-success border-0">
-                              Cobrado
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCharged((current) => {
-                                  const next = { ...current };
-                                  delete next[g.id];
-                                  return next;
-                                });
-                              }}
-                            >
-                              <Undo2 className="h-3.5 w-3.5" /> Voltar p/ pendente
-                            </Button>
-                          </>
+                          <Badge className="bg-success/15 text-success border-0">
+                            Cobrado
+                          </Badge>
                         ) : (
                           <Badge variant="outline">Pendente</Badge>
                         )}
                       </div>
                     </div>
                   </AccordionTrigger>
+                  {chargedAt && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCharged((current) => {
+                          const next = { ...current };
+                          delete next[g.id];
+                          return next;
+                        });
+                      }}
+                    >
+                      <Undo2 className="h-3.5 w-3.5" /> Voltar p/ pendente
+                    </Button>
+                  )}
                   {isSelected && g.phone && totals.count > 0 && (
                     <Button
                       variant="ghost"
