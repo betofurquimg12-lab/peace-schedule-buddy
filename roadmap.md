@@ -1,7 +1,7 @@
 # Roadmap
 
 - [x] Adicionar campos de modo de nota e cobrança de ausência ao banco.
-- [ ] Atualizar tipos e formulários de paciente e consulta.
-- [ ] Aplicar a regra de cobrança e os filtros mensais no financeiro.
-- [ ] Ajustar notas fiscais, fechamento, WhatsApp e ações de pagamentos.
-- [ ] Validar compilação e fluxos visuais principais.
+- [x] Atualizar tipos e formulários de paciente e consulta.
+- [x] Aplicar a regra de cobrança e os filtros mensais no financeiro.
+- [x] Ajustar notas fiscais, fechamento, WhatsApp e ações de pagamentos.
+- [x] Validar compilação; teste visual autenticado bloqueado por ausência de conta correspondente ao solicitante.
