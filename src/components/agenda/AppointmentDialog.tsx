@@ -16,6 +16,7 @@ import { schema, INFINITE_CAP, toLocalDate, toLocalTime, buildOccurrenceDates } 
 import { Field } from "./appointment/Field";
 import { PatientCombobox } from "./appointment/PatientCombobox";
 import { ExternalEventDialog } from "./appointment/ExternalEventDialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type Props = {
   open: boolean;
@@ -43,6 +44,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     modality: "online",
     price: 0,
     status: "scheduled",
+    cobrar_ausencia: null,
     recurrence: "none",
     recurrence_mode: "none",
     occurrences: 4,
@@ -119,6 +121,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         modality: appointment.modality ?? "online",
         price: Number(appointment.price ?? 0),
         status: appointment.status ?? "scheduled",
+        cobrar_ausencia: appointment.cobrar_ausencia ?? null,
         recurrence,
         recurrence_mode: recurrenceMode,
         occurrences,
@@ -145,6 +148,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         modality: "online",
         price: 0,
         status: "scheduled",
+        cobrar_ausencia: null,
         recurrence: "none",
         recurrence_mode: "none",
         occurrences: 4,
@@ -253,6 +257,16 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     }
     const isBlock = !!form.is_block;
     const isVittude = !!form.is_vittude;
+    const isAbsence = parsed.data.status === "canceled" || parsed.data.status === "no_show";
+    if (isAbsence && form.cobrar_ausencia === null) {
+      return toast({ title: "Informe se esta sessão será cobrada", variant: "destructive" });
+    }
+    if (isAbsence && form.cobrar_ausencia === false && existingPayment?.paid_at) {
+      return toast({
+        title: "Sessão já paga. Estorne o pagamento antes de marcar como não cobrada.",
+        variant: "destructive",
+      });
+    }
     if (!isBlock && !parsed.data.patient_id) {
       return toast({ title: "Selecione um paciente", variant: "destructive" });
     }
@@ -265,6 +279,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         notes: parsed.data.notes || null,
         alert: parsed.data.alert?.trim() || null,
         status: parsed.data.status,
+        cobrar_ausencia: isAbsence ? form.cobrar_ausencia : null,
       } as any).eq("id", appointment.id);
 
       if (error) {
@@ -272,7 +287,11 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
-      await upsertPayment(appointment.id, parsed.data.price);
+      if (isAbsence && form.cobrar_ausencia === false) {
+        await supabase.from("payments").delete().eq("appointment_id", appointment.id);
+      } else {
+        await upsertPayment(appointment.id, parsed.data.price);
+      }
       setSaving(false);
       toast({ title: "Atendimento atualizado" });
       onSaved();
@@ -313,6 +332,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         modality: parsed.data.modality,
         price: isBlock ? 0 : parsed.data.price,
         status: parsed.data.status,
+        cobrar_ausencia: isAbsence ? form.cobrar_ausencia : null,
         notes: parsed.data.notes || null,
         alert: parsed.data.alert?.trim() || null,
         is_block: isBlock,
@@ -324,7 +344,9 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         return toast({ title: "Erro", description: error.message, variant: "destructive" });
       }
 
-      if (!isBlock && !isVittude) {
+      if (isAbsence && form.cobrar_ausencia === false) {
+        await supabase.from("payments").delete().eq("appointment_id", appointment.id);
+      } else if (!isBlock && !isVittude) {
         await upsertPayment(appointment.id, parsed.data.price);
       } else {
         const { data: existing } = await supabase.from("payments").select("id").eq("appointment_id", appointment.id).maybeSingle();
@@ -456,6 +478,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           modality: parsed.data.modality,
           price: isBlock ? 0 : parsed.data.price,
           status: parsed.data.status,
+          cobrar_ausencia: isAbsence ? form.cobrar_ausencia : null,
           recurrence: parsed.data.recurrence,
           recurrence_group_id: groupId,
           recurrence_end_date: recurrenceEndDate,
@@ -495,7 +518,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
         })();
       }
 
-      if (inserted && inserted.length && !isBlock && !isVittude) {
+      if (inserted && inserted.length && !isBlock && !isVittude && !(isAbsence && form.cobrar_ausencia === false)) {
         const sorted = [...inserted].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
         await upsertPayment(sorted[0].id, parsed.data.price);
       }
@@ -714,7 +737,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 </Select>
               </Field>
               <Field label="Status">
-                <Select value={form.status} onValueChange={(v) => set("status", v)}>
+                <Select value={form.status} onValueChange={(v) => setForm((f: any) => ({ ...f, status: v, cobrar_ausencia: v === "canceled" || v === "no_show" ? f.cobrar_ausencia : null }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="scheduled">Agendada</SelectItem>
@@ -725,6 +748,23 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                 </Select>
               </Field>
             </div>
+          )}
+
+          {!form.is_block && (form.status === "canceled" || form.status === "no_show") && (
+            <Field label="Esta sessão será cobrada? *">
+              <RadioGroup
+                value={form.cobrar_ausencia === null ? "" : String(form.cobrar_ausencia)}
+                onValueChange={(v) => set("cobrar_ausencia", v === "true")}
+                className="flex gap-4"
+              >
+                <label className="flex items-center gap-2 text-sm">
+                  <RadioGroupItem value="true" /> Sim
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <RadioGroupItem value="false" /> Não
+                </label>
+              </RadioGroup>
+            </Field>
           )}
 
           {!isConverted && (

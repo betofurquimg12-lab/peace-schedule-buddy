@@ -9,7 +9,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Undo2 } from "lucide-react";
 import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
 import { loadTemplate, renderTemplate } from "@/lib/messageTemplate";
 
@@ -27,7 +27,7 @@ interface PatientGroup {
 }
 
 export const FechamentoTab = ({ appts, month }: Props) => {
-  // Pacientes elegíveis: não bloqueio, não cancelado/no_show, não Vittude, com paciente
+  // Pacientes elegíveis: não bloqueio, faturável, não Vittude, não pago, com paciente
   const groups: PatientGroup[] = useMemo(() => {
     const map = new Map<string, PatientGroup>();
     appts
@@ -35,8 +35,7 @@ export const FechamentoTab = ({ appts, month }: Props) => {
         (a) =>
           !a.is_block &&
           !a.is_vittude &&
-          a.status !== "canceled" &&
-          a.status !== "no_show" &&
+          (!(a.status === "canceled" || a.status === "no_show") || a.cobrar_ausencia === true) &&
           !a.payment?.[0]?.paid_at &&
           a.patient?.id,
       )
@@ -238,6 +237,22 @@ export const FechamentoTab = ({ appts, month }: Props) => {
                       </div>
                     </div>
                   </AccordionTrigger>
+                  {chargedAt && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCharged((current) => {
+                          const next = { ...current };
+                          delete next[g.id];
+                          return next;
+                        });
+                      }}
+                    >
+                      <Undo2 className="h-3.5 w-3.5" /> Voltar p/ pendente
+                    </Button>
+                  )}
                   {isSelected && g.phone && totals.count > 0 && (
                     <Button
                       variant="ghost"
@@ -285,6 +300,10 @@ export const FechamentoTab = ({ appts, month }: Props) => {
                                   <Badge className="bg-success/15 text-success border-0">
                                     Realizada
                                   </Badge>
+                                ) : s.status === "canceled" ? (
+                                  <Badge variant="secondary">Cancelada (cobrada)</Badge>
+                                ) : s.status === "no_show" ? (
+                                  <Badge variant="secondary">Faltou (cobrada)</Badge>
                                 ) : (
                                   <Badge variant="secondary">Agendada</Badge>
                                 )}

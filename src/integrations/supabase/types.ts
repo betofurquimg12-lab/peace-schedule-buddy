@@ -87,6 +87,7 @@ export type Database = {
         Row: {
           alert: string | null
           block_reason: string | null
+          cobrar_ausencia: boolean | null
           converted_to_particular: boolean
           created_at: string
           created_by: string | null
@@ -118,6 +119,7 @@ export type Database = {
         Insert: {
           alert?: string | null
           block_reason?: string | null
+          cobrar_ausencia?: boolean | null
           converted_to_particular?: boolean
           created_at?: string
           created_by?: string | null
@@ -149,6 +151,7 @@ export type Database = {
         Update: {
           alert?: string | null
           block_reason?: string | null
+          cobrar_ausencia?: boolean | null
           converted_to_particular?: boolean
           created_at?: string
           created_by?: string | null
@@ -841,6 +844,7 @@ export type Database = {
           history: string | null
           id: string
           main_complaint: string | null
+          nota_modo: string | null
           notes: string | null
           payment_link: string | null
           payment_link_expires_at: string | null
@@ -866,6 +870,7 @@ export type Database = {
           history?: string | null
           id?: string
           main_complaint?: string | null
+          nota_modo?: string | null
           notes?: string | null
           payment_link?: string | null
           payment_link_expires_at?: string | null
@@ -891,6 +896,7 @@ export type Database = {
           history?: string | null
           id?: string
           main_complaint?: string | null
+          nota_modo?: string | null
           notes?: string | null
           payment_link?: string | null
           payment_link_expires_at?: string | null
