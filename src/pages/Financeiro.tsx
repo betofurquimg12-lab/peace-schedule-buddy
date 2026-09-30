@@ -21,6 +21,7 @@ import { NotasTab } from "@/components/financeiro/NotasTab";
 import { buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
 const Financeiro = () => {
+  const SHOW_RECEIVABLE_MONTH = false; // aba "A receber (Mês)" desativada temporariamente
   const { user } = useAuth();
   const { toast } = useToast();
   const [month, setMonth] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
@@ -46,7 +47,7 @@ const Financeiro = () => {
   });
 
   // Pagination per tab
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const [pages, setPages] = useState({ receivable: 1, receivable_month: 1, paid: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
   const setPage = (k: keyof typeof pages, p: number) => setPages((s) => ({ ...s, [k]: p }));
 
@@ -319,7 +320,9 @@ const Financeiro = () => {
       <Tabs defaultValue="receivable">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="receivable">A receber</TabsTrigger>
-          <TabsTrigger value="receivable_month">A receber (Mês)</TabsTrigger>
+          {SHOW_RECEIVABLE_MONTH && (
+            <TabsTrigger value="receivable_month">A receber (Mês)</TabsTrigger>
+          )}
           <TabsTrigger value="paid">Pagos</TabsTrigger>
           <TabsTrigger value="vittude">Vittude</TabsTrigger>
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
@@ -344,53 +347,55 @@ const Financeiro = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="receivable_month" className="mt-4 space-y-4">
-          {(() => {
-            const groups = new Map<string, any[]>();
-            aReceberAll.forEach((a) => {
-              const key = a.starts_at ? a.starts_at.slice(0, 7) : "sem-previsao";
-              if (!groups.has(key)) groups.set(key, []);
-              groups.get(key)!.push(a);
-            });
-            const sorted = Array.from(groups.entries()).sort(([k1], [k2]) => {
-              if (k1 === "sem-previsao") return 1;
-              if (k2 === "sem-previsao") return -1;
-              return k1.localeCompare(k2);
-            });
-            if (sorted.length === 0) return <Card className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</Card>;
-            // Flatten groups with headers for pagination
-            type Row = { kind: "header"; key: string; label: string; subtotal: number; count: number } | { kind: "item"; key: string; a: any };
-            const flat: Row[] = [];
-            sorted.forEach(([key, items]) => {
-              const subtotal = items.reduce((s, a) => s + Number(a.price || 0), 0);
-              const label = key === "sem-previsao"
-                ? "Sem Previsão"
-                : new Date(key + "-01T00:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-              flat.push({ kind: "header", key: `h-${key}`, label, subtotal, count: items.length });
-              items.forEach((a) => flat.push({ kind: "item", key: a.id, a }));
-            });
-            const paged = paginate(flat, pages.receivable_month, pageSize);
-            return (
-              <>
-                <Card className="divide-y">
-                  {paged.map((r) => r.kind === "header" ? (
-                    <div key={r.key} className="p-4 flex items-center justify-between bg-warning/10 border-l-4 border-warning">
-                      <div>
-                        <div className="text-base font-semibold capitalize">{r.label}</div>
-                        <div className="text-xs text-muted-foreground">{r.count} {r.count === 1 ? "sessão" : "sessões"}</div>
+        {SHOW_RECEIVABLE_MONTH && (
+          <TabsContent value="receivable_month" className="mt-4 space-y-4">
+            {(() => {
+              const groups = new Map<string, any[]>();
+              aReceberAll.forEach((a) => {
+                const key = a.starts_at ? a.starts_at.slice(0, 7) : "sem-previsao";
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key)!.push(a);
+              });
+              const sorted = Array.from(groups.entries()).sort(([k1], [k2]) => {
+                if (k1 === "sem-previsao") return 1;
+                if (k2 === "sem-previsao") return -1;
+                return k1.localeCompare(k2);
+              });
+              if (sorted.length === 0) return <Card className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</Card>;
+              // Flatten groups with headers for pagination
+              type Row = { kind: "header"; key: string; label: string; subtotal: number; count: number } | { kind: "item"; key: string; a: any };
+              const flat: Row[] = [];
+              sorted.forEach(([key, items]) => {
+                const subtotal = items.reduce((s, a) => s + Number(a.price || 0), 0);
+                const label = key === "sem-previsao"
+                  ? "Sem Previsão"
+                  : new Date(key + "-01T00:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+                flat.push({ kind: "header", key: `h-${key}`, label, subtotal, count: items.length });
+                items.forEach((a) => flat.push({ kind: "item", key: a.id, a }));
+              });
+              const paged = paginate(flat, pages.receivable_month, pageSize);
+              return (
+                <>
+                  <Card className="divide-y">
+                    {paged.map((r) => r.kind === "header" ? (
+                      <div key={r.key} className="p-4 flex items-center justify-between bg-warning/10 border-l-4 border-warning">
+                        <div>
+                          <div className="text-base font-semibold capitalize">{r.label}</div>
+                          <div className="text-xs text-muted-foreground">{r.count} {r.count === 1 ? "sessão" : "sessões"}</div>
+                        </div>
+                        <div className="text-lg font-bold text-warning">{formatBRL(r.subtotal)}</div>
                       </div>
-                      <div className="text-lg font-bold text-warning">{formatBRL(r.subtotal)}</div>
-                    </div>
-                  ) : (
-                    <ReceivableRow key={r.key} a={r.a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} showCharge />
-                  ))}
-                  <PaginationControls page={pages.receivable_month} pageSize={pageSize} total={flat.length}
-                    onPageChange={(p) => setPage("receivable_month", p)} onPageSizeChange={setPageSize} />
-                </Card>
-              </>
-            );
-          })()}
-        </TabsContent>
+                    ) : (
+                      <ReceivableRow key={r.key} a={r.a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} showCharge />
+                    ))}
+                    <PaginationControls page={pages.receivable_month} pageSize={pageSize} total={flat.length}
+                      onPageChange={(p) => setPage("receivable_month", p)} onPageSizeChange={setPageSize} />
+                  </Card>
+                </>
+              );
+            })()}
+          </TabsContent>
+        )}
 
         <TabsContent value="paid" className="mt-4">
           {(() => {
