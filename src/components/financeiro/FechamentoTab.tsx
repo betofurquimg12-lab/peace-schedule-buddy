@@ -12,6 +12,7 @@ import {
 import { MessageCircle, Undo2 } from "lucide-react";
 import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
 import { loadTemplate, renderTemplate } from "@/lib/messageTemplate";
+import { InfoTip } from "@/components/financeiro/InfoTip";
 
 interface Props {
   appts: any[];
@@ -176,15 +177,18 @@ export const FechamentoTab = ({ appts, month }: Props) => {
     <div className="space-y-4">
       {/* Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card className="p-4">
+        <Card className="p-4 relative">
+          <InfoTip text="Pacientes particulares com sessões não pagas no mês (inclui cancelamentos/faltas marcados para cobrança)." />
           <div className="text-xs text-muted-foreground">Pacientes no mês</div>
           <div className="text-xl font-semibold">{summary.totalPatients}</div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 relative">
+          <InfoTip text="Pacientes marcados para entrar no fechamento." />
           <div className="text-xs text-muted-foreground">Selecionados</div>
           <div className="text-xl font-semibold">{summary.selectedCount}</div>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 relative">
+          <InfoTip text="Soma das sessões marcadas dos pacientes selecionados." />
           <div className="text-xs text-muted-foreground">Total do fechamento</div>
           <div className="text-xl font-semibold text-success">
             {formatBRL(summary.totalValue)}

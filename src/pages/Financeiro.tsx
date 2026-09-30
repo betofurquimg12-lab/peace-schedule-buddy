@@ -14,10 +14,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
-import { ChevronLeft, ChevronRight, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { FechamentoTab } from "@/components/financeiro/FechamentoTab";
 import { NotasTab } from "@/components/financeiro/NotasTab";
+import { InfoTip } from "@/components/financeiro/InfoTip";
 import { buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
 const Financeiro = () => {
@@ -275,9 +276,23 @@ const Financeiro = () => {
     void load();
   };
 
+  const resetPages = () => {
+    setPages({ receivable: 1, receivable_month: 1, paid: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
+  };
   const moveMonth = (d: number) => {
     const m = new Date(month); m.setMonth(m.getMonth() + d); setMonth(m);
-    setPages({ receivable: 1, receivable_month: 1, paid: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
+    resetPages();
+  };
+  const now = new Date();
+  const isCurrentMonth = month.getMonth() === now.getMonth() && month.getFullYear() === now.getFullYear();
+  const rawMonthLabel = month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const monthLabel = rawMonthLabel.charAt(0).toUpperCase() + rawMonthLabel.slice(1);
+  const goToCurrentMonth = () => {
+    const current = new Date();
+    current.setDate(1);
+    current.setHours(0, 0, 0, 0);
+    setMonth(current);
+    resetPages();
   };
 
   return (
@@ -286,11 +301,19 @@ const Financeiro = () => {
 
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
-          <div className="text-sm font-medium ml-2 capitalize">
-            {month.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+          <div className="inline-flex items-center gap-2 rounded-xl border bg-card px-2 py-1.5 shadow-sm">
+            <Button variant="ghost" size="icon" onClick={() => moveMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+            <CalendarDays className="h-5 w-5 text-muted-foreground" />
+            <div className="text-xl sm:text-2xl font-bold min-w-[200px] text-center">
+              {monthLabel}
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => moveMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
           </div>
+          {isCurrentMonth ? (
+            <Badge className="bg-primary/10 text-primary border-0">Mês atual</Badge>
+          ) : (
+            <Button variant="outline" size="sm" onClick={goToCurrentMonth}>Voltar para hoje</Button>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => openNewEntry("credit")}>
@@ -303,17 +326,17 @@ const Financeiro = () => {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Stat label="Faturamento sessões" value={formatBRL(totalDone)} />
+        <Stat label="Faturamento sessões" value={formatBRL(totalDone)} info="Soma do valor de todas as sessões particulares com data no mês, pagas ou não. Inclui agendadas, realizadas e cancelamentos/faltas marcados para cobrança. Não inclui Vittude, bloqueios nem cancelamentos/faltas não cobrados." />
 
-        <Stat label="Recebido" value={formatBRL(totalReceived)} tone="success" />
-        <Stat label="Previsto a receber" value={formatBRL(totalAReceberMonth)} tone="warning" />
-        <Stat label="Caixa (recebido)" value={formatBRL(netResult)} tone={netResult >= 0 ? "success" : "warning"} />
+        <Stat label="Recebido" value={formatBRL(totalReceived)} tone="success" info="Pagamentos das sessões particulares com data no mês. Considera a data da sessão, não a do pagamento. Não inclui Vittude." />
+        <Stat label="Previsto a receber" value={formatBRL(totalAReceberMonth)} tone="warning" info="Soma das sessões particulares do mês ainda não pagas (mesmo valor da aba A receber). Não inclui Vittude." />
+        <Stat label="Caixa (recebido)" value={formatBRL(netResult)} tone={netResult >= 0 ? "success" : "warning"} info="Recebido + créditos manuais − débitos manuais do mês (aba Lançamentos)." />
       </div>
 
       {(extraCredits > 0 || extraDebits > 0) && (
         <div className="grid grid-cols-2 gap-3 mb-6">
-          <Stat label="Outros créditos" value={formatBRL(extraCredits)} tone="success" />
-          <Stat label="Outros débitos" value={formatBRL(extraDebits)} tone="warning" />
+          <Stat label="Outros créditos" value={formatBRL(extraCredits)} tone="success" info="Soma dos lançamentos manuais de crédito do mês." />
+          <Stat label="Outros débitos" value={formatBRL(extraDebits)} tone="warning" info="Soma dos lançamentos manuais de débito do mês." />
         </div>
       )}
 
@@ -402,9 +425,10 @@ const Financeiro = () => {
             const totalPaid = paidMonth.reduce((s, p) => s + Number(p.amount || 0), 0);
             return (
               <>
-                <Card className="p-4 mb-3 flex items-center justify-between">
-                  <div className="text-sm text-muted-foreground">Total recebido no mês</div>
-                  <div className="text-xl font-semibold text-success">{formatBRL(totalPaid)}</div>
+                <Card className="p-4 mb-3 flex items-center justify-between relative">
+                  <InfoTip text="Pagamentos com data de pagamento no mês selecionado, independentemente da data da sessão. Não inclui Vittude." />
+                  <div className="text-sm text-muted-foreground pr-6">Total recebido no mês</div>
+                  <div className="text-xl font-semibold text-success pr-6">{formatBRL(totalPaid)}</div>
                 </Card>
                 <Card className="divide-y">
                   {paidMonth.length === 0 && (
@@ -753,8 +777,9 @@ const Financeiro = () => {
   );
 };
 
-const Stat = ({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" }) => (
-  <Card className="p-4">
+const Stat = ({ label, value, tone, info }: { label: string; value: string; tone?: "success" | "warning"; info?: string }) => (
+  <Card className="p-4 relative">
+    {info && <InfoTip text={info} />}
     <div className="text-xs text-muted-foreground">{label}</div>
     <div className={`text-xl font-semibold ${tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : ""}`}>{value}</div>
   </Card>
