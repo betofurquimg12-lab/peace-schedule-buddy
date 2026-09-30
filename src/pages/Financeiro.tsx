@@ -18,6 +18,7 @@ import { ChevronLeft, ChevronRight, Check, MessageCircle, Plus, Trash2, ArrowUpC
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { FechamentoTab } from "@/components/financeiro/FechamentoTab";
 import { NotasTab } from "@/components/financeiro/NotasTab";
+import { buildChargeWaUrlAsync } from "@/lib/sessionReminder";
 
 const Financeiro = () => {
   const { user } = useAuth();
@@ -66,7 +67,7 @@ const Financeiro = () => {
     const [a, e, upcoming, allPending, vit, paid] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, source, is_block, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, cobrar_ausencia, source, is_block, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .gte("starts_at", range.start.toISOString())
         .lt("starts_at", range.end.toISOString())
         .eq("is_block", false)
@@ -86,14 +87,14 @@ const Financeiro = () => {
       // A receber (global, sem filtro de mês): appointments não-bloqueio, não-cancelados, sem pagamento ou não pagos (inclui Vittude)
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, cobrar_ausencia, source, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .eq("is_block", false)
-        .not("status", "in", "(canceled,no_show)")
+        .or("status.not.in.(canceled,no_show),cobrar_ausencia.eq.true")
         .order("starts_at", { ascending: true }),
       // Vittude (global) — agora com price/payment para permitir marcar pago
       supabase
         .from("appointments")
-        .select("id, starts_at, price, status, source, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
+        .select("id, starts_at, price, status, cobrar_ausencia, source, is_vittude, external_summary, patient:patients(id, full_name, phone, payment_link), payment:payments(id, amount, paid_at, due_date, method, notes)")
         .eq("is_vittude", true)
         .order("starts_at", { ascending: false }),
       // Pagos no mês
@@ -115,13 +116,15 @@ const Financeiro = () => {
       (r: any) => !r.is_vittude && (!r.payment[0] || !r.payment[0].paid_at),
     );
     setAReceberAll(pendingOnly);
-    setVittudeAll(normalize(vit.data ?? []));
+    setVittudeAll(normalize(vit.data ?? []).filter(
+      (r: any) => (!(r.status === "canceled" || r.status === "no_show") || r.cobrar_ausencia === true),
+    ));
     setPaidMonth(paid.data ?? []);
   };
   useEffect(() => { void load(); }, [month]);
 
-  // Sessões consideradas para o financeiro: todas as não canceladas (inclui Vittude na visão geral)
-  const billable = appts.filter((a) => a.status !== "canceled" && a.status !== "no_show");
+  // Sessões consideradas para o financeiro: ativas ou ausências marcadas para cobrança.
+  const billable = appts.filter((a) => (!(a.status === "canceled" || a.status === "no_show") || a.cobrar_ausencia === true));
   const realized = billable; // mantém nome usado abaixo
   const totalDone = billable.reduce((s, a) => s + Number(a.price || 0), 0);
   // Recebido = pagamentos com paid_at preenchido (independe do status da sessão)
@@ -135,6 +138,13 @@ const Financeiro = () => {
     0,
   );
   const totalPending = Math.max(0, totalDone - totalReceived - totalScheduled);
+
+  const inSelectedMonth = (a: any) => {
+    const startsAt = new Date(a.starts_at).getTime();
+    return startsAt >= range.start.getTime() && startsAt < range.end.getTime();
+  };
+  const aReceberMonth = aReceberAll.filter(inSelectedMonth);
+  const vittudeMonth = vittudeAll.filter(inSelectedMonth);
 
   const extraCredits = entries.filter((e) => e.type === "credit").reduce((s, e) => s + Number(e.amount), 0);
   const extraDebits = entries.filter((e) => e.type === "debit").reduce((s, e) => s + Number(e.amount), 0);
@@ -265,6 +275,7 @@ const Financeiro = () => {
 
   const moveMonth = (d: number) => {
     const m = new Date(month); m.setMonth(m.getMonth() + d); setMonth(m);
+    setPages({ receivable: 1, receivable_month: 1, paid: 1, vittude: 1, entries: 1, patients: 1, general: 1 });
   };
 
   return (
@@ -320,14 +331,14 @@ const Financeiro = () => {
 
         <TabsContent value="receivable" className="mt-4">
           <Card className="divide-y">
-            {aReceberAll.length === 0 && (
+            {aReceberMonth.length === 0 && (
               <div className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</div>
             )}
-            {paginate(aReceberAll, pages.receivable, pageSize).map((a) => (
-              <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} />
+            {paginate(aReceberMonth, pages.receivable, pageSize).map((a) => (
+              <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} showCharge />
             ))}
-            {aReceberAll.length > 0 && (
-              <PaginationControls page={pages.receivable} pageSize={pageSize} total={aReceberAll.length}
+            {aReceberMonth.length > 0 && (
+              <PaginationControls page={pages.receivable} pageSize={pageSize} total={aReceberMonth.length}
                 onPageChange={(p) => setPage("receivable", p)} onPageSizeChange={setPageSize} />
             )}
           </Card>
@@ -348,14 +359,14 @@ const Financeiro = () => {
             });
             if (sorted.length === 0) return <Card className="p-6 text-sm text-muted-foreground text-center">Nenhum valor a receber.</Card>;
             // Flatten groups with headers for pagination
-            type Row = { kind: "header"; key: string; label: string; subtotal: number } | { kind: "item"; key: string; a: any };
+            type Row = { kind: "header"; key: string; label: string; subtotal: number; count: number } | { kind: "item"; key: string; a: any };
             const flat: Row[] = [];
             sorted.forEach(([key, items]) => {
               const subtotal = items.reduce((s, a) => s + Number(a.price || 0), 0);
               const label = key === "sem-previsao"
                 ? "Sem Previsão"
                 : new Date(key + "-01T00:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-              flat.push({ kind: "header", key: `h-${key}`, label, subtotal });
+              flat.push({ kind: "header", key: `h-${key}`, label, subtotal, count: items.length });
               items.forEach((a) => flat.push({ kind: "item", key: a.id, a }));
             });
             const paged = paginate(flat, pages.receivable_month, pageSize);
@@ -363,12 +374,15 @@ const Financeiro = () => {
               <>
                 <Card className="divide-y">
                   {paged.map((r) => r.kind === "header" ? (
-                    <div key={r.key} className="p-3 flex items-center justify-between bg-muted/30">
-                      <div className="text-sm font-semibold capitalize">{r.label}</div>
-                      <div className="text-sm font-semibold text-warning">{formatBRL(r.subtotal)}</div>
+                    <div key={r.key} className="p-4 flex items-center justify-between bg-warning/10 border-l-4 border-warning">
+                      <div>
+                        <div className="text-base font-semibold capitalize">{r.label}</div>
+                        <div className="text-xs text-muted-foreground">{r.count} {r.count === 1 ? "sessão" : "sessões"}</div>
+                      </div>
+                      <div className="text-lg font-bold text-warning">{formatBRL(r.subtotal)}</div>
                     </div>
                   ) : (
-                    <ReceivableRow key={r.key} a={r.a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} />
+                    <ReceivableRow key={r.key} a={r.a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} showCharge />
                   ))}
                   <PaginationControls page={pages.receivable_month} pageSize={pageSize} total={flat.length}
                     onPageChange={(p) => setPage("receivable_month", p)} onPageSizeChange={setPageSize} />
@@ -406,9 +420,6 @@ const Financeiro = () => {
                       <div className="flex items-center gap-2">
                         <div className="text-sm font-semibold text-success">{formatBRL(Number(p.amount))}</div>
                         <Button variant="ghost" size="sm" onClick={() => removePay(p.id)}>Estornar</Button>
-                        <Button variant="ghost" size="icon" title="Excluir pagamento" onClick={() => removePay(p.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
                     </div>
                   ))}
@@ -425,14 +436,14 @@ const Financeiro = () => {
 
         <TabsContent value="vittude" className="mt-4">
           <Card className="divide-y">
-            {vittudeAll.length === 0 && (
+            {vittudeMonth.length === 0 && (
               <div className="p-6 text-sm text-muted-foreground text-center">Nenhum atendimento Vittude.</div>
             )}
-            {paginate(vittudeAll, pages.vittude, pageSize).map((a) => (
+            {paginate(vittudeMonth, pages.vittude, pageSize).map((a) => (
               <ReceivableRow key={a.id} a={a} openPay={openPay} openReceiptDialog={openReceiptDialog} removePay={removePay} removeAppointment={removeAppointment} />
             ))}
-            {vittudeAll.length > 0 && (
-              <PaginationControls page={pages.vittude} pageSize={pageSize} total={vittudeAll.length}
+            {vittudeMonth.length > 0 && (
+              <PaginationControls page={pages.vittude} pageSize={pageSize} total={vittudeMonth.length}
                 onPageChange={(p) => setPage("vittude", p)} onPageSizeChange={setPageSize} />
             )}
           </Card>
@@ -747,7 +758,7 @@ const Stat = ({ label, value, tone }: { label: string; value: string; tone?: "su
 const statusLabel = (s: string) =>
   ({ scheduled: "Agendada", done: "Realizada", canceled: "Cancelada", no_show: "Faltou" }[s] ?? s);
 
-const ReceivableRow = ({ a, openPay, openReceiptDialog, removePay, removeAppointment }: { a: any; openPay: (a: any) => void; openReceiptDialog: (p: any) => void; removePay: (paymentId: string) => void; removeAppointment: (appointmentId: string) => void }) => {
+const ReceivableRow = ({ a, openPay, openReceiptDialog, removePay, removeAppointment, showCharge = false }: { a: any; openPay: (a: any) => void; openReceiptDialog: (p: any) => void; removePay: (paymentId: string) => void; removeAppointment: (appointmentId: string) => void; showCharge?: boolean }) => {
   const pay = a.payment?.[0];
   const isScheduled = !!pay && !pay.paid_at && !!pay.due_date;
   return (
@@ -773,6 +784,25 @@ const ReceivableRow = ({ a, openPay, openReceiptDialog, removePay, removeAppoint
             ? <Badge className="bg-warning/15 text-warning border-0">A receber</Badge>
             : <Badge variant="outline">Pendente</Badge>}
         </div>
+        {showCharge && !a.is_vittude && a.patient?.phone && !pay?.paid_at && (
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Cobrar via WhatsApp"
+            onClick={async () => {
+              const url = await buildChargeWaUrlAsync({
+                phone: a.patient.phone,
+                patientName: a.patient.full_name,
+                startsAt: a.starts_at,
+                price: Number(a.price || 0),
+                paymentLink: a.patient.payment_link ?? null,
+              });
+              window.open(url, "_blank", "noopener,noreferrer");
+            }}
+          >
+            <MessageCircle className="h-4 w-4 text-success" />
+          </Button>
+        )}
         {isScheduled
           ? <Button size="sm" onClick={() => openReceiptDialog(pay)}><Check className="h-4 w-4" /> Recebi</Button>
           : <Button size="sm" onClick={() => openPay(a)}><Check className="h-4 w-4" /> Marcar pago</Button>}
