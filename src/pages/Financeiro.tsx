@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatBRL, formatDateBR, buildWaUrl } from "@/lib/format";
-import { ChevronLeft, ChevronRight, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Check, MessageCircle, Plus, Trash2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { PaginationControls, paginate } from "@/components/PaginationControls";
 import { FechamentoTab } from "@/components/financeiro/FechamentoTab";
 import { NotasTab } from "@/components/financeiro/NotasTab";
