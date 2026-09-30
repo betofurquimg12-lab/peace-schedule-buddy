@@ -19,6 +19,7 @@ interface Group {
   id: string;
   name: string;
   cpf: string | null;
+  nota_modo: "por_sessao" | "mensal" | null;
   sessions: { id: string; starts_at: string; price: number }[];
   total: number;
   descricao: string;
@@ -62,7 +63,7 @@ export const NotasTab = ({ month }: Props) => {
     const [a, i] = await Promise.all([
       supabase
         .from("appointments")
-        .select("id, starts_at, price, patient:patients!inner(id, full_name, cpf, default_session_price, emite_nota)")
+        .select("id, starts_at, price, patient:patients!inner(id, full_name, cpf, default_session_price, emite_nota, nota_modo)")
         .eq("status", "done")
         .eq("is_block", false)
         .eq("patient.emite_nota", true)
@@ -89,7 +90,7 @@ export const NotasTab = ({ month }: Props) => {
       const p = a.patient;
       if (!p?.id) continue;
       const price = Number(a.price) > 0 ? Number(a.price) : Number(p.default_session_price ?? 0);
-      if (!map.has(p.id)) map.set(p.id, { id: p.id, name: p.full_name, cpf: p.cpf, sessions: [], total: 0, descricao: "" });
+      if (!map.has(p.id)) map.set(p.id, { id: p.id, name: p.full_name, cpf: p.cpf, nota_modo: p.nota_modo, sessions: [], total: 0, descricao: "" });
       map.get(p.id)!.sessions.push({ id: a.id, starts_at: a.starts_at, price });
     }
     return Array.from(map.values())
@@ -168,7 +169,12 @@ export const NotasTab = ({ month }: Props) => {
       <Card key={g.id} className={`p-4 space-y-3 ${inv ? "opacity-70" : ""}`}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="font-medium">{g.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium">{g.name}</p>
+              {g.nota_modo && (
+                <Badge variant="outline">{g.nota_modo === "por_sessao" ? "Por sessão" : "Mensal"}</Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
               {g.sessions.length} {g.sessions.length === 1 ? "sessão" : "sessões"} · {brl(g.total)}
             </p>

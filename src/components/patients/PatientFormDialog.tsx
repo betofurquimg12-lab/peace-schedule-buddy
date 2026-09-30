@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PaymentLinkExpiryBadge } from "@/components/patients/PaymentLinkExpiryBadge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const onlyDdi = (v?: string) => /^\+?\d{0,3}$/.test((v ?? "").trim());
 
@@ -42,6 +43,7 @@ const schema = z
     history: z.string().trim().max(5000).optional().or(z.literal("")),
     notes: z.string().trim().max(5000).optional().or(z.literal("")),
     emite_nota: z.boolean().default(false),
+    nota_modo: z.enum(["por_sessao", "mensal"]).nullable().optional(),
   })
   .refine((d) => !!((d.phone && !onlyDdi(d.phone)) || d.email), { message: "Informe telefone ou e-mail", path: ["phone"] });
 
@@ -76,6 +78,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     history: "",
     notes: "",
     emite_nota: false,
+    nota_modo: null,
   });
 
   useEffect(() => {
@@ -99,13 +102,14 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
         history: patient.history ?? "",
         notes: patient.notes ?? "",
         emite_nota: !!patient.emite_nota,
+        nota_modo: patient.nota_modo ?? null,
       });
     } else {
       setForm({
         full_name: "", phone: "+55 ", email: "", cpf: "", birth_date: "", address: "",
         city: "", state: "", country: "Brasil",
         responsible_name: "", responsible_phone: "+55 ", default_session_price: 0, payment_link: "", payment_link_expires_at: "",
-        main_complaint: "", history: "", notes: "", emite_nota: false,
+        main_complaint: "", history: "", notes: "", emite_nota: false, nota_modo: null,
       });
     }
   }, [patient, open]);
@@ -116,6 +120,10 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast({ title: "Verifique os dados", description: parsed.error.issues[0].message, variant: "destructive" });
+      return;
+    }
+    if (parsed.data.emite_nota && !parsed.data.nota_modo) {
+      toast({ title: "Verifique os dados", description: "Selecione como a nota fiscal será emitida", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -135,6 +143,7 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
       payment_link: parsed.data.payment_link || null,
       payment_link_expires_at: parsed.data.payment_link ? (parsed.data.payment_link_expires_at || null) : null,
       emite_nota: !!parsed.data.emite_nota,
+      nota_modo: parsed.data.emite_nota ? parsed.data.nota_modo : null,
     };
     if (isOwner) {
       payload.main_complaint = parsed.data.main_complaint || null;
@@ -182,6 +191,20 @@ export const PatientFormDialog = ({ open, onOpenChange, onSaved, patient }: Prop
               <Checkbox id="emite_nota" checked={!!form.emite_nota} onCheckedChange={(v) => set("emite_nota", v === true)} />
               <Label htmlFor="emite_nota" className="text-sm font-normal">Emite nota fiscal</Label>
             </div>
+            {form.emite_nota && (
+              <Field label="Como emite a nota *">
+                <RadioGroup value={form.nota_modo ?? ""} onValueChange={(v) => set("nota_modo", v)} className="gap-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <RadioGroupItem value="por_sessao" />
+                    Uma nota por sessão
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <RadioGroupItem value="mensal" />
+                    Uma nota mensal com todas as sessões
+                  </label>
+                </RadioGroup>
+              </Field>
+            )}
             <Field label="Valor padrão da sessão (R$)"><Input type="number" step="0.01" value={form.default_session_price} onChange={(e) => set("default_session_price", e.target.value)} /></Field>
             <Field label="Link de pagamento (cartão)">
               <Input
