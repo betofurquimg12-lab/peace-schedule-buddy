@@ -62,6 +62,8 @@ const Agenda = () => {
   const [waDialog, setWaDialog] = useState<any>(null);
   const [statusColors, setStatusColors] = useState(DEFAULT_STATUS_COLORS);
   const [statusFilter, setStatusFilter] = useState<ApptStatus[]>([]);
+  const [highlightIds, setHighlightIds] = useState<string[]>([]);
+  const [conflictStart, setConflictStart] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const gridHeaderRef = useRef<HTMLDivElement>(null);
   const scrolledWeekRef = useRef<string | null>(null);
@@ -158,6 +160,33 @@ const Agenda = () => {
     [appts, statusFilter]
   );
 
+  const overlapPositions = useMemo(() => {
+    const positions = new Map<string, { index: number; total: number }>();
+    for (const day of days) {
+      const dayAppts = visibleAppts
+        .filter((a) => sameDay(new Date(a.starts_at), day))
+        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+      let group: typeof dayAppts = [];
+      let groupEnd = -Infinity;
+      const finishGroup = () => {
+        group.forEach((a, index) => positions.set(a.id, { index, total: group.length }));
+      };
+      for (const a of dayAppts) {
+        const start = new Date(a.starts_at).getTime();
+        const end = new Date(a.ends_at).getTime();
+        if (group.length > 0 && start >= groupEnd) {
+          finishGroup();
+          group = [];
+          groupEnd = -Infinity;
+        }
+        group.push(a);
+        groupEnd = Math.max(groupEnd, end);
+      }
+      finishGroup();
+    }
+    return positions;
+  }, [days, visibleAppts]);
+
   const styleFor = (a: any) => {
     const bg = statusColors[(a.status as ApptStatus)] ?? statusColors.scheduled;
     return { backgroundColor: bg, color: textColorFor(bg) };
@@ -183,7 +212,61 @@ const Agenda = () => {
   }, []);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const conflictParam = searchParams.get("conflict");
   useEffect(() => {
+    if (!conflictParam) return;
+    const ids = conflictParam.split(",").map((id) => id.trim()).filter(Boolean);
+    if (ids.length === 0) {
+      setSearchParams((params) => {
+        const next = new URLSearchParams(params);
+        next.delete("conflict");
+        return next;
+      }, { replace: true });
+      return;
+    }
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    void (async () => {
+      const { data } = await supabase.from("appointments")
+        .select("starts_at").eq("id", ids[0]).maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setRefDate(startOfWeek(new Date(data.starts_at)));
+        setHighlightIds(ids);
+        setConflictStart(data.starts_at);
+      }
+      timer = setTimeout(() => {
+        setHighlightIds([]);
+        setConflictStart(null);
+        setSearchParams((params) => {
+          const next = new URLSearchParams(params);
+          next.delete("conflict");
+          return next;
+        }, { replace: true });
+      }, 6000);
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [conflictParam, setSearchParams]);
+
+  useEffect(() => {
+    if (!conflictStart || !settingsLoaded) return;
+    const start = new Date(conflictStart);
+    if (startOfWeek(start).getTime() !== refDate.getTime()) return;
+    const frame = requestAnimationFrame(() => {
+      const grid = gridRef.current;
+      if (!grid) return;
+      grid.scrollTop = Math.max(0, (start.getHours() + start.getMinutes() / 60 - settings.startHour) * hourPx);
+      scrolledWeekRef.current = refDate.toISOString();
+      setConflictStart(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [conflictStart, settingsLoaded, refDate, settings.startHour, hourPx]);
+
+  useEffect(() => {
+    if (searchParams.has("conflict")) return;
     const apptId = searchParams.get("appointment");
     if (!apptId) return;
     (async () => {
@@ -411,7 +494,7 @@ const Agenda = () => {
                 const isNowCell = isToday && isCurrentHour;
                 return (
                   <div key={d.toISOString() + h} className={`border-l p-1 relative cursor-pointer hover:bg-muted/30 min-w-0 ${isNowCell ? "bg-primary/20" : isToday ? "bg-primary/5" : ""}`} style={{ height: hourPx }} onClick={() => slotAppts.length === 0 && onSlot(d, h)}>
-                    {slotAppts.map((a, idx) => {
+                    {slotAppts.map((a) => {
                       const ext = a.source === "google" && !a.is_vittude && !a.converted_to_particular;
                       const isBlock = !!a.is_block;
                       const isVittude = !!a.is_vittude;
@@ -428,11 +511,17 @@ const Agenda = () => {
                       const durMin = Math.max(15, Math.round((+endDt - +startDt) / 60000));
                       const topPx = (startDt.getMinutes() / 60) * hourPx;
                       const heightPx = Math.max(24, (durMin / 60) * hourPx - 2);
+                      const position = overlapPositions.get(a.id) ?? { index: 0, total: 1 };
                       return (
                         <div
                           key={a.id}
-                          className="absolute left-1 right-1 z-10 pointer-events-auto"
-                          style={{ top: topPx + (idx * 2), height: heightPx }}
+                          className={`absolute pointer-events-auto ${highlightIds.includes(a.id) ? "ring-2 ring-destructive animate-pulse motion-reduce:animate-none z-20" : "z-10"}`}
+                          style={{
+                            top: topPx,
+                            height: heightPx,
+                            width: `calc((100% - 0.5rem) / ${position.total})`,
+                            left: `calc(0.25rem + (100% - 0.5rem) * ${position.index} / ${position.total})`,
+                          }}
                         >
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
