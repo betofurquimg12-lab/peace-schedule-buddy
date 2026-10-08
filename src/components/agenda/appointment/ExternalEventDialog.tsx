@@ -100,6 +100,20 @@ export const ExternalEventDialog = ({
             <span className="font-medium">Converter para atendimento particular</span>
           </label>
 
+          {isVittudeEvent && !convertToParticular && (
+            <Field label="Status">
+              <Select value={form.status} onValueChange={(v) => set("status", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Agendada</SelectItem>
+                  <SelectItem value="done">Realizada</SelectItem>
+                  <SelectItem value="canceled">Cancelada</SelectItem>
+                  <SelectItem value="no_show">Faltou</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+
           <Field label="Alerta no card">
             <Input maxLength={25} placeholder="Ex.: Não cobrar" value={form.alert ?? appointment.alert ?? ""} onChange={(e) => set("alert", e.target.value)} />
             <div className="flex items-center justify-between">
@@ -225,7 +239,7 @@ export const ExternalEventDialog = ({
               setSaving(true);
               const { error } = await supabase
                 .from("appointments")
-                .update({ notes: form.notes || null, alert: form.alert?.trim() || null } as any)
+                .update({ notes: form.notes || null, alert: form.alert?.trim() || null, ...(isVittudeEvent ? { status: form.status } : {}) } as any)
                 .eq("id", appointment.id);
               setSaving(false);
               if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
