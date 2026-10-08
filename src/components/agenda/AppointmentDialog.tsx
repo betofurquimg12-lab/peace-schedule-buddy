@@ -32,6 +32,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [patients, setPatients] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<string | null>(null);
+  const skipConflictRef = useRef(false);
+  const conflictScopeRef = useRef<"one" | "forward" | "all" | undefined>(undefined);
   const [existingPayment, setExistingPayment] = useState<any>(null);
   const isExternal = appointment?.source === "google" && !appointment?.converted_to_particular;
   const isConverted = appointment?.source === "google" && !!appointment?.converted_to_particular;
@@ -191,6 +193,12 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     setRevertOpen(false);
   }, [appointment, presetStart, open]);
 
+  useEffect(() => {
+    setConflict(null);
+    skipConflictRef.current = false;
+    conflictScopeRef.current = undefined;
+  }, [form]);
+
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
   const onPatientChange = (id: string) => {
@@ -272,7 +280,7 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     }
   };
 
-  const submit = async (editScope?: "one" | "forward" | "all") => {
+  const submit = async (editScope?: "one" | "forward" | "all", skipConflict = false) => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast({ title: "Verifique os dados", description: parsed.error.issues[0].message, variant: "destructive" });
@@ -325,12 +333,23 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
     const start = new Date(`${parsed.data.date}T${parsed.data.time}:00`);
     const end = new Date(start.getTime() + parsed.data.duration * 60000);
 
-    const conflicts = await checkConflict(start.toISOString(), end.toISOString());
-    if (conflicts.length) {
-      setConflict(`Conflito com: ${conflicts[0].patient?.full_name ?? "outro evento"} em ${formatDateTimeBR(conflicts[0].starts_at)}`);
-      setSaving(false);
-      return;
+    const originalStart = appointment ? new Date(appointment.starts_at) : null;
+    const originalEnd = appointment ? new Date(appointment.ends_at) : null;
+    const scheduleChanged = !appointment || !originalStart || !originalEnd ||
+      parsed.data.date !== toLocalDate(originalStart) ||
+      parsed.data.time !== toLocalTime(originalStart) ||
+      parsed.data.duration !== Math.round((+originalEnd - +originalStart) / 60000);
+    if (skipConflict) skipConflictRef.current = true;
+    if (!isAbsence && scheduleChanged && !skipConflictRef.current) {
+      const conflicts = await checkConflict(start.toISOString(), end.toISOString());
+      if (conflicts.length) {
+        conflictScopeRef.current = editScope;
+        setConflict(`Conflito com: ${conflicts[0].patient?.full_name ?? "outro evento"} em ${formatDateTimeBR(conflicts[0].starts_at)}`);
+        setSaving(false);
+        return;
+      }
     }
+    setConflict(null);
 
     const init = initialRecurrenceRef.current;
     const recurrenceChanged =
@@ -930,7 +949,15 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
 
           <Field label="Observações"><Textarea rows={2} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
 
-          {conflict && <div className="text-sm text-destructive">{conflict}</div>}
+          {conflict && (
+            <div className="space-y-2">
+              <div className="text-sm text-destructive">{conflict}</div>
+              <Button type="button" variant="outline" size="sm" disabled={saving || !!scopeBusy}
+                onClick={() => submit(conflictScopeRef.current, true)}>
+                Salvar mesmo assim
+              </Button>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-1 sm:gap-1 flex-row flex-wrap items-center">
