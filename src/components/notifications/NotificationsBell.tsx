@@ -89,7 +89,13 @@ export const NotificationsBell = () => {
     }
     const apptId = n.related_appointment_ids?.[0];
     setOpen(false);
-    if (apptId) navigate(`/agenda?appointment=${apptId}`);
+    if (apptId) {
+      if (n.type.includes("conflict")) {
+        navigate(`/agenda?conflict=${n.related_appointment_ids.join(",")}`);
+      } else {
+        navigate(`/agenda?appointment=${apptId}`);
+      }
+    }
   };
 
   const markAllRead = async () => {
