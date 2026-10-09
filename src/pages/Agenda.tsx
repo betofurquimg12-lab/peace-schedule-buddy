@@ -145,7 +145,7 @@ const Agenda = () => {
     try { await supabase.rpc("mark_past_appointments_done"); } catch { /* ignore */ }
     const { data } = await supabase
       .from("appointments")
-      .select("id, starts_at, ends_at, price, status, alert, meet_link, source, external_summary, google_event_id, google_calendar_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
+      .select("id, starts_at, ends_at, price, status, cobrar_ausencia, notes, modality, duration_minutes, alert, meet_link, source, external_summary, google_event_id, google_calendar_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
       .gte("starts_at", start.toISOString())
       .lt("starts_at", end.toISOString())
       .order("starts_at");
@@ -272,7 +272,7 @@ const Agenda = () => {
     (async () => {
       const { data } = await supabase
         .from("appointments")
-        .select("id, starts_at, ends_at, price, status, alert, meet_link, source, external_summary, google_event_id, google_calendar_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
+        .select("id, starts_at, ends_at, price, status, cobrar_ausencia, notes, modality, duration_minutes, alert, meet_link, source, external_summary, google_event_id, google_calendar_id, recurrence, recurrence_group_id, recurrence_end_date, is_vittude, converted_to_particular, is_block, block_reason, patient:patients(id, full_name, phone, payment_link)")
         .eq("id", apptId)
         .maybeSingle();
       if (data) {
