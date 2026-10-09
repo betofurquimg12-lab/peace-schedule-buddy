@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import { useUpcomingSessionAlerts } from "@/hooks/useUpcomingSessionAlerts";
 import { NotificationsBell } from "@/components/notifications/NotificationsBell";
+import { PaymentLinkAlertBanner } from "@/components/patients/PaymentLinkAlertBanner";
 
 const nav = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
@@ -96,6 +97,7 @@ export const AppLayout = () => {
       </aside>
       <main className="flex-1 min-w-0">
         <div className="p-4 md:p-6">
+          <PaymentLinkAlertBanner />
           <Outlet />
         </div>
       </main>
