@@ -17,6 +17,8 @@ import { Field } from "./appointment/Field";
 import { PatientCombobox } from "./appointment/PatientCombobox";
 import { ExternalEventDialog } from "./appointment/ExternalEventDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -65,6 +67,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const [scopeBusy, setScopeBusy] = useState<null | "one" | "forward" | "all">(null);
   const [revertOpen, setRevertOpen] = useState(false);
   const [seriesPos, setSeriesPos] = useState<{ index: number; total: number } | null>(null);
+  const [recurrenceOpen, setRecurrenceOpen] = useState(!appointment);
+  const [paymentOpen, setPaymentOpen] = useState(!appointment);
   const initialRecurrenceRef = useRef<{ recurrence_mode: string; recurrence: string; occurrences: number; recurrence_end_date: string } | null>(null);
 
   const runScoped = async (scope: "one" | "forward" | "all", fn: () => Promise<unknown>) => {
@@ -80,6 +84,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
 
   useEffect(() => {
     if (!open) return;
+    setRecurrenceOpen(!appointment);
+    setPaymentOpen(!appointment);
     if (appointment) {
       const s = new Date(appointment.starts_at);
       const e = new Date(appointment.ends_at);
@@ -283,6 +289,12 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
   const submit = async (editScope?: "one" | "forward" | "all", skipConflict = false) => {
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
+      if (parsed.error.issues.some((issue) => ["recurrence", "recurrence_mode", "occurrences", "recurrence_end_date"].includes(String(issue.path[0])))) {
+        setRecurrenceOpen(true);
+      }
+      if (parsed.error.issues.some((issue) => ["payment_status", "payment_date", "payment_method"].includes(String(issue.path[0])))) {
+        setPaymentOpen(true);
+      }
       toast({ title: "Verifique os dados", description: parsed.error.issues[0].message, variant: "destructive" });
       return;
     }
@@ -810,8 +822,19 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
           )}
 
           {!isConverted && (
-            <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorrência</div>
+            <Collapsible open={recurrenceOpen} onOpenChange={setRecurrenceOpen} className="rounded-lg border p-3 bg-muted/20">
+              <CollapsibleTrigger asChild>
+                <Button type="button" variant="ghost" className="h-auto w-full justify-between gap-2 rounded-none p-0 hover:bg-transparent">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recorrência</span>
+                  {!recurrenceOpen && (
+                    <span className="ml-auto text-sm font-medium text-right whitespace-normal">
+                      {form.recurrence_mode === "none" ? "Sem recorrência" : seriesPos ? `Sessão ${seriesPos.index} de ${seriesPos.total}` : form.recurrence_mode === "count" ? `${form.occurrences} sessões` : form.recurrence_mode === "until" ? "Até uma data final" : "Indefinida"}
+                    </span>
+                  )}
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none ${recurrenceOpen ? "rotate-180" : ""}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-3">
               {seriesPos && <div className="text-sm font-medium">Sessão {seriesPos.index} de {seriesPos.total}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Tipo">
@@ -871,12 +894,24 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                   </div>
                 );
               })()}
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           )}
 
           {!form.is_block && (
-            <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pagamento</div>
+            <Collapsible open={paymentOpen} onOpenChange={setPaymentOpen} className="rounded-lg border p-3 bg-muted/20">
+              <CollapsibleTrigger asChild>
+                <Button type="button" variant="ghost" className="h-auto w-full justify-between gap-2 rounded-none p-0 hover:bg-transparent">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pagamento</span>
+                  {!paymentOpen && (
+                    <span className="ml-auto text-sm font-medium text-right whitespace-normal">
+                      {form.payment_status === "paid" ? "Pago" : form.payment_status === "scheduled_payment" ? "A pagar (com previsão)" : form.payment_status === "vittude" ? "Vittude" : "Em aberto"}
+                    </span>
+                  )}
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none ${paymentOpen ? "rotate-180" : ""}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-3">
               <Field label="Status do pagamento">
                 <Select
                   value={form.payment_status}
@@ -927,7 +962,8 @@ export const AppointmentDialog = ({ open, onOpenChange, onSaved, appointment, pr
                     : `Previsão atual: ${new Date(existingPayment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}`}
                 </div>
               )}
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           )}
 
           {!form.is_block && (
