@@ -40,13 +40,13 @@ export const AppLayout = () => {
         <Button
           variant="ghost"
           size="icon"
-          className={cn("hidden md:inline-flex absolute top-3 right-3 h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent", collapsed && "md:left-1/2 md:right-auto md:-translate-x-1/2")}
+          className="hidden md:inline-flex absolute top-6 -right-3 z-30 h-6 w-6 rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm hover:bg-sidebar-accent"
           onClick={toggleCollapsed}
           title={collapsed ? "Expandir menu" : "Recolher menu"}
         >
-          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          {collapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
         </Button>
-        <div className={cn("p-4 md:p-6 flex md:block items-center gap-3", collapsed && "md:pt-14")}>
+        <div className={cn("p-4 md:p-4 flex md:block items-center gap-3", collapsed && "md:pt-6")}>
           <div className="flex items-center gap-3 flex-1 md:flex-none">
             <div className="h-9 w-9 rounded-full bg-sidebar-primary text-sidebar-primary-foreground inline-flex items-center justify-center font-semibold">C</div>
             <div className={cn("md:mt-3", collapsed && "md:hidden")}>

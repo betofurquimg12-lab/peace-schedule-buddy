@@ -352,10 +352,11 @@ const Agenda = () => {
               } finally { setSyncing(false); }
             }}
             disabled={syncing}
+            title="Sincronizar"
           >
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> Sincronizar
+            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} /> <span className="hidden 2xl:inline">Sincronizar</span>
           </Button>
-          <Button size="sm" onClick={() => { setEditing(null); setPresetSlot(null); setOpen(true); }}><Plus className="h-4 w-4" /> Nova consulta</Button>
+          <Button size="sm" title="Nova consulta" onClick={() => { setEditing(null); setPresetSlot(null); setOpen(true); }}><Plus className="h-4 w-4" /> <span className="hidden 2xl:inline">Nova consulta</span></Button>
         </div>
       </div>
 
@@ -525,7 +526,7 @@ const Agenda = () => {
                         >
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditing(a); setOpen(true); }}
-                            className={`block w-full h-full text-left rounded-md px-2 py-1 pr-14 text-xs overflow-hidden ${btnClass}`}
+                            className={`block w-full h-full text-left rounded-md px-2 py-1 text-xs ${isBlock ? "" : (!ext && a.meet_link) ? "pr-[4.5rem]" : "pr-12"} overflow-hidden ${btnClass}`}
                              style={!isBlock && !ext ? styleFor(a) : undefined}
                           >
                             <div className="font-medium truncate flex items-center gap-1">
