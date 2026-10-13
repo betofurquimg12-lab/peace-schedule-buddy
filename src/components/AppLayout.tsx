@@ -36,7 +36,7 @@ export const AppLayout = () => {
   useUpcomingSessionAlerts(!!user);
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
-      <aside className={cn("relative md:sticky md:top-0 md:h-screen bg-sidebar text-sidebar-foreground flex md:flex-col border-b md:border-b-0 md:border-r border-sidebar-border transition-[width]", collapsed ? "md:w-16" : "md:w-60")}>
+      <aside className={cn("relative md:sticky md:top-0 md:h-screen md:z-30 bg-sidebar text-sidebar-foreground flex md:flex-col border-b md:border-b-0 md:border-r border-sidebar-border transition-[width]", collapsed ? "md:w-16" : "md:w-52")}>
         <Button
           variant="ghost"
           size="icon"
